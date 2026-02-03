@@ -323,3 +323,74 @@ export async function getTopReaders(limit: number = 10) {
   
   return sortedReaders;
 }
+
+// دوال إدارة أسماء الأشخاص
+
+export async function getAllPersons() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(persons);
+}
+
+export async function updatePersonName(personId: number, newName: string) {
+  const db = await getDb();
+  if (!db) return { success: false, message: "قاعدة البيانات غير متاحة" };
+  
+  try {
+    // الحصول على الاسم القديم
+    const person = await db.select().from(persons).where(eq(persons.id, personId)).limit(1);
+    if (person.length === 0) {
+      return { success: false, message: "الشخص غير موجود" };
+    }
+    
+    const oldName = person[0].name;
+    
+    // تحديث الاسم في جدول persons
+    await db.update(persons).set({ name: newName }).where(eq(persons.id, personId));
+    
+    // تحديث جميع القراءات باستخدام استعلامات محدثة متعددة
+    // تحديث person1Name
+    await db.update(readings)
+      .set({ person1Name: newName })
+      .where(eq(readings.person1Name, oldName));
+    
+    // تحديث person2Name
+    await db.update(readings)
+      .set({ person2Name: newName })
+      .where(eq(readings.person2Name, oldName));
+    
+    // تحديث person3Name
+    await db.update(readings)
+      .set({ person3Name: newName })
+      .where(eq(readings.person3Name, oldName));
+    
+    return { success: true, message: "تم تحديث الاسم بنجاح" };
+  } catch (error) {
+    console.error("[Database] Error updating person name:", error);
+    return { success: false, message: "حدث خطأ أثناء التحديث" };
+  }
+}
+
+export async function bulkUpdatePersonNames(updates: Array<{ id: number; name: string }>) {
+  const db = await getDb();
+  if (!db) return { success: false, message: "قاعدة البيانات غير متاحة" };
+  
+  try {
+    let successCount = 0;
+    
+    for (const update of updates) {
+      const result = await updatePersonName(update.id, update.name);
+      if (result.success) successCount++;
+    }
+    
+    return { 
+      success: true, 
+      message: `تم تحديث ${successCount} من ${updates.length} أسماء بنجاح`,
+      count: successCount
+    };
+  } catch (error) {
+    console.error("[Database] Error bulk updating person names:", error);
+    return { success: false, message: "حدث خطأ أثناء التحديث الجماعي" };
+  }
+}

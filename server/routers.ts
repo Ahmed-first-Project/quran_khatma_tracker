@@ -70,6 +70,33 @@ export const appRouter = router({
       }),
   }),
 
+  // الأشخاص
+  persons: router({
+    getAll: publicProcedure.query(async () => {
+      return await db.getAllPersons();
+    }),
+    
+    updateName: publicProcedure
+      .input(z.object({
+        personId: z.number(),
+        newName: z.string().min(1, "يجب إدخال اسم صحيح"),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.updatePersonName(input.personId, input.newName);
+      }),
+    
+    bulkUpdate: publicProcedure
+      .input(z.object({
+        updates: z.array(z.object({
+          id: z.number(),
+          name: z.string(),
+        })),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.bulkUpdatePersonNames(input.updates);
+      }),
+  }),
+
   // الإحصائيات
   stats: router({
     getFridayStats: publicProcedure

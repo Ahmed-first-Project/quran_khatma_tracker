@@ -7,8 +7,9 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Dashboard from "./pages/Dashboard";
 import Readings from "./pages/Readings";
 import Statistics from "./pages/Statistics";
+import ManageParticipants from "./pages/ManageParticipants";
 import { Button } from "./components/ui/button";
-import { Home, BookOpen, BarChart3 } from "lucide-react";
+import { Home, BookOpen, BarChart3, Users } from "lucide-react";
 
 function Navigation() {
   const [location] = useLocation();
@@ -17,6 +18,7 @@ function Navigation() {
     { path: "/", label: "الرئيسية", icon: Home },
     { path: "/readings", label: "القراءات", icon: BookOpen },
     { path: "/statistics", label: "الإحصائيات", icon: BarChart3 },
+    { path: "/manage", label: "إدارة المشاركين", icon: Users },
   ];
 
   return (
@@ -59,6 +61,7 @@ function Router() {
           <Route path="/" component={Dashboard} />
           <Route path="/readings" component={Readings} />
           <Route path="/statistics" component={Statistics} />
+          <Route path="/manage" component={ManageParticipants} />
           <Route path="/404" component={NotFound} />
           <Route component={NotFound} />
         </Switch>
