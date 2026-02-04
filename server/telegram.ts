@@ -6,7 +6,15 @@ const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 /**
  * إرسال رسالة نصية عبر Telegram
  */
-export async function sendTelegramMessage(chatId: string | number, text: string): Promise<boolean> {
+export async function sendTelegramMessage(
+  chatId: string | number, 
+  text: string,
+  options?: {
+    reply_markup?: {
+      inline_keyboard?: Array<Array<{ text: string; url: string }>>;
+    };
+  }
+): Promise<boolean> {
   if (!TELEGRAM_BOT_TOKEN) {
     console.error("[Telegram] Bot token not configured");
     return false;
@@ -17,6 +25,7 @@ export async function sendTelegramMessage(chatId: string | number, text: string)
       chat_id: chatId,
       text: text,
       parse_mode: "HTML",
+      ...options,
     });
 
     return response.data.ok;

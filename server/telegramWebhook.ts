@@ -55,11 +55,24 @@ router.post("/api/telegram/webhook", async (req, res) => {
     const result = await db.linkTelegramAccount(text, chatId, username);
 
     if (result.success) {
+      const appUrl = process.env.VITE_APP_URL || "https://3000-in77ue6pwa0mxr69upg56-f19f248a.sg1.manus.computer";
+      const myReadingsUrl = `${appUrl}/my-readings?name=${encodeURIComponent(result.person?.name || "")}`;
+      
       await sendTelegramMessage(
         chatId,
         `✅ تم ربط حسابك بنجاح!\n\n` +
           `الاسم: ${result.person?.name}\n\n` +
-          `ستصلك الآن جميع التنبيهات والتذكيرات. بارك الله فيك! 🤲`
+          `ستصلك الآن جميع التنبيهات والتذكيرات. بارك الله فيك! 🤲`,
+        {
+          reply_markup: {
+            inline_keyboard: [[
+              {
+                text: "📖 عرض قراءاتي",
+                url: myReadingsUrl
+              }
+            ]]
+          }
+        }
       );
     } else {
       // إذا فشل الربط، إرسال رسالة توضيحية
