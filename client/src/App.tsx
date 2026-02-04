@@ -12,8 +12,9 @@ import LinkTelegram from "./pages/LinkTelegram";
 import Notifications from "./pages/Notifications";
 import MyReadings from "./pages/MyReadings";
 import ManageGroups from "./pages/ManageGroups";
+import Help from "./pages/Help";
 import { Button } from "./components/ui/button";
-import { Home, BookOpen, BarChart3, Users } from "lucide-react";
+import { Home, BookOpen, BarChart3, Users, HelpCircle } from "lucide-react";
 
 function Navigation() {
   const [location] = useLocation();
@@ -23,6 +24,7 @@ function Navigation() {
     { path: "/readings", label: "القراءات", icon: BookOpen },
     { path: "/statistics", label: "الإحصائيات", icon: BarChart3 },
     { path: "/manage", label: "إدارة المشاركين", icon: Users },
+    { path: "/help", label: "المساعدة", icon: HelpCircle },
   ];
 
   return (
@@ -70,6 +72,7 @@ function Router() {
           <Route path="/link-telegram" component={LinkTelegram} />
           <Route path="/notifications" component={Notifications} />
           <Route path="/my-readings" component={MyReadings} />
+          <Route path="/help" component={Help} />
           <Route path="/404" component={NotFound} />
           <Route component={NotFound} />
         </Switch>
