@@ -2,185 +2,282 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Bell, Send, Users, UserCheck } from "lucide-react";
+import { Bell, Send, Clock, CheckCircle2, XCircle, Users, Settings } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export default function Notifications() {
-  const [message, setMessage] = useState("");
-  const [recipient, setRecipient] = useState<"all" | "admins">("all");
+  const [selectedFriday, setSelectedFriday] = useState<number>(181);
+  const [isSending, setIsSending] = useState(false);
 
-  const sendToAll = trpc.notifications.sendToAll.useMutation({
-    onSuccess: (data) => {
-      toast.success(`تم إرسال الرسالة إلى ${data.count} شخص`);
-      setMessage("");
+  // جلب البيانات
+  const { data: fridays } = trpc.fridays.getAll.useQuery();
+  const { data: pendingReadings, refetch: refetchPending } = trpc.notifications.getPendingReadings.useQuery(
+    { fridayNumber: selectedFriday },
+    { enabled: !!selectedFriday }
+  );
+  const { data: notificationHistory } = trpc.notifications.getByFriday.useQuery(
+    { fridayNumber: selectedFriday },
+    { enabled: !!selectedFriday }
+  );
+  const { data: settings, refetch: refetchSettings } = trpc.notifications.getSettings.useQuery();
+
+  // Mutations
+  const sendRemindersMutation = trpc.notifications.sendReminders.useMutation({
+    onSuccess: (result) => {
+      toast.success(`تم إرسال ${result.sent} تذكير بنجاح`);
+      if (result.failed > 0) {
+        toast.error(`فشل إرسال ${result.failed} تذكير`);
+      }
+      refetchPending();
     },
-    onError: () => {
-      toast.error("فشل إرسال الرسالة");
+    onError: (error) => {
+      toast.error(`خطأ في إرسال التذكيرات: ${error.message}`);
     },
   });
 
-  const sendToAdmins = trpc.notifications.sendToAdmins.useMutation({
-    onSuccess: (data) => {
-      toast.success(`تم إرسال الرسالة إلى ${data.count} مشرف`);
-      setMessage("");
-    },
-    onError: () => {
-      toast.error("فشل إرسال الرسالة");
-    },
-  });
-
-  const sendDailyReport = trpc.notifications.sendDailyReport.useMutation({
+  const updateSettingMutation = trpc.notifications.updateSetting.useMutation({
     onSuccess: () => {
-      toast.success("تم إرسال التقرير اليومي للمشرفين");
+      toast.success("تم تحديث الإعداد بنجاح");
+      refetchSettings();
     },
-    onError: () => {
-      toast.error("فشل إرسال التقرير");
-    },
-  });
-
-  const sendWeeklyReminder = trpc.notifications.sendWeeklyReminder.useMutation({
-    onSuccess: () => {
-      toast.success("تم إرسال التذكير الأسبوعي");
-    },
-    onError: () => {
-      toast.error("فشل إرسال التذكير");
+    onError: (error) => {
+      toast.error(`خطأ في تحديث الإعداد: ${error.message}`);
     },
   });
 
-  const handleSend = () => {
-    if (!message.trim()) {
-      toast.error("الرجاء كتابة رسالة");
+  // الحصول على قيمة إعداد معين
+  const getSetting = (key: string) => {
+    return settings?.find(s => s.settingKey === key)?.settingValue || '';
+  };
+
+  // تحديث إعداد
+  const handleUpdateSetting = (key: string, value: string, description?: string) => {
+    updateSettingMutation.mutate({ key, value, description });
+  };
+
+  // إرسال التذكيرات
+  const handleSendReminders = async () => {
+    if (!selectedFriday) {
+      toast.error("يرجى اختيار جمعة");
       return;
     }
 
-    if (recipient === "all") {
-      sendToAll.mutate({ message });
-    } else {
-      sendToAdmins.mutate({ message });
+    setIsSending(true);
+    try {
+      await sendRemindersMutation.mutateAsync({
+        fridayNumber: selectedFriday,
+        notificationType: 'manual',
+      });
+    } finally {
+      setIsSending(false);
     }
   };
 
+  const autoRemindersEnabled = getSetting('auto_reminders_enabled') === 'true';
+  const currentFridayNumber = parseInt(getSetting('current_friday_number')) || 181;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2">
             <Bell className="w-8 h-8 text-[#1F4E78]" />
             <h1 className="text-3xl md:text-4xl font-bold text-[#1F4E78]">
-              إدارة التنبيهات
+              إدارة الإشعارات
             </h1>
           </div>
           <p className="text-gray-600">
-            إرسال رسائل وتنبيهات للمشاركين عبر Telegram
+            إرسال تذكيرات للمشاركين وإدارة الإشعارات التلقائية
           </p>
         </div>
 
-        {/* إرسال رسالة مخصصة */}
+        {/* الإعدادات */}
+        <Card className="border-2 border-[#D4AF37]/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="w-5 h-5" />
+              إعدادات الإشعارات التلقائية
+            </CardTitle>
+            <CardDescription>
+              تفعيل وإدارة التذكيرات التلقائية التي ترسل كل خميس الساعة 6 مساءً
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="auto-reminders">تفعيل التذكيرات التلقائية</Label>
+                <p className="text-sm text-muted-foreground">
+                  إرسال تذكيرات تلقائية كل خميس الساعة 6 مساءً
+                </p>
+              </div>
+              <Switch
+                id="auto-reminders"
+                checked={autoRemindersEnabled}
+                onCheckedChange={(checked) => {
+                  handleUpdateSetting(
+                    'auto_reminders_enabled',
+                    checked ? 'true' : 'false',
+                    'تفعيل/تعطيل التذكيرات التلقائية'
+                  );
+                }}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="current-friday">رقم الجمعة الحالية</Label>
+              <Select
+                value={currentFridayNumber.toString()}
+                onValueChange={(value) => {
+                  handleUpdateSetting(
+                    'current_friday_number',
+                    value,
+                    'رقم الجمعة الحالية للتذكيرات التلقائية'
+                  );
+                }}
+              >
+                <SelectTrigger id="current-friday">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {fridays?.map((friday) => (
+                    <SelectItem key={friday.id} value={friday.fridayNumber.toString()}>
+                      الجمعة {friday.fridayNumber} - {friday.dateGregorian}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                سيتم إرسال التذكيرات التلقائية للمشاركين المتأخرين في هذه الجمعة
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* إرسال تذكيرات يدوية */}
         <Card className="border-2 border-[#D4AF37]/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Send className="w-5 h-5" />
-              إرسال رسالة مخصصة
+              إرسال تذكيرات يدوية
             </CardTitle>
             <CardDescription>
-              أرسل رسالة مخصصة لجميع المشاركين أو للمشرفين فقط
+              اختر جمعة وأرسل تذكيرات فورية لجميع المشاركين المتأخرين
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>المستلمون</Label>
-              <div className="flex gap-2">
-                <Button
-                  variant={recipient === "all" ? "default" : "outline"}
-                  onClick={() => setRecipient("all")}
-                  className="flex-1"
-                >
-                  <Users className="w-4 h-4 ml-2" />
-                  جميع المشاركين
-                </Button>
-                <Button
-                  variant={recipient === "admins" ? "default" : "outline"}
-                  onClick={() => setRecipient("admins")}
-                  className="flex-1"
-                >
-                  <UserCheck className="w-4 h-4 ml-2" />
-                  المشرفون فقط
-                </Button>
+            <div className="flex gap-4">
+              <Select
+                value={selectedFriday?.toString()}
+                onValueChange={(value) => setSelectedFriday(parseInt(value))}
+              >
+                <SelectTrigger className="w-[300px]">
+                  <SelectValue placeholder="اختر جمعة" />
+                </SelectTrigger>
+                <SelectContent>
+                  {fridays?.map((friday) => (
+                    <SelectItem key={friday.id} value={friday.fridayNumber.toString()}>
+                      الجمعة {friday.fridayNumber} - {friday.dateGregorian}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Button
+                onClick={handleSendReminders}
+                disabled={isSending || !selectedFriday || (pendingReadings?.length || 0) === 0}
+                className="gap-2 bg-[#1F4E78] hover:bg-[#1F4E78]/90"
+              >
+                <Send className="w-4 h-4" />
+                {isSending ? "جاري الإرسال..." : "إرسال التذكيرات"}
+              </Button>
+            </div>
+
+            {/* المشاركون المتأخرون */}
+            {pendingReadings && pendingReadings.length > 0 && (
+              <div className="border rounded-lg p-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Users className="w-4 h-4" />
+                  المشاركون المتأخرون ({pendingReadings.length})
+                </div>
+                <div className="grid gap-2 max-h-[300px] overflow-y-auto">
+                  {pendingReadings.map((reading, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-2 bg-muted rounded text-sm"
+                    >
+                      <span className="font-medium">{reading.name}</span>
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <span>الجزء {reading.juzNumber}</span>
+                        <span>•</span>
+                        <span>المجموعة {reading.groupNumber}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            <div className="space-y-2">
-              <Label htmlFor="message">الرسالة</Label>
-              <Textarea
-                id="message"
-                placeholder="اكتب رسالتك هنا..."
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                rows={5}
-                className="resize-none"
-              />
-            </div>
-
-            <Button
-              onClick={handleSend}
-              disabled={sendToAll.isPending || sendToAdmins.isPending || !message.trim()}
-              className="w-full bg-[#1F4E78] hover:bg-[#1F4E78]/90"
-            >
-              {(sendToAll.isPending || sendToAdmins.isPending) ? "جاري الإرسال..." : "إرسال الرسالة"}
-            </Button>
+            {pendingReadings && pendingReadings.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <CheckCircle2 className="w-12 h-12 mx-auto mb-2 text-green-500" />
+                <p>جميع المشاركين أكملوا قراءاتهم! 🎉</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* إجراءات سريعة */}
+        {/* سجل الإشعارات */}
         <Card className="border-2 border-[#D4AF37]/20">
           <CardHeader>
-            <CardTitle>إجراءات سريعة</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5" />
+              سجل الإشعارات
+            </CardTitle>
             <CardDescription>
-              إرسال تقارير وتذكيرات تلقائية
+              آخر الإشعارات المرسلة للجمعة المختارة
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <Button
-              onClick={() => sendDailyReport.mutate()}
-              disabled={sendDailyReport.isPending}
-              variant="outline"
-              className="w-full justify-start"
-            >
-              📊 إرسال التقرير اليومي للمشرفين
-            </Button>
-
-            <Button
-              onClick={() => {
-                const fridayNumber = parseInt(prompt("أدخل رقم الجمعة (181-210):") || "181");
-                if (fridayNumber >= 181 && fridayNumber <= 210) {
-                  sendWeeklyReminder.mutate({ fridayNumber });
-                } else {
-                  toast.error("رقم الجمعة غير صحيح");
-                }
-              }}
-              disabled={sendWeeklyReminder.isPending}
-              variant="outline"
-              className="w-full justify-start"
-            >
-              🌙 إرسال تذكير أسبوعي للمشاركين
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* معلومات */}
-        <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="pt-6">
-            <div className="space-y-2 text-sm text-gray-700">
-              <p className="font-semibold">ملاحظات:</p>
-              <ul className="list-disc list-inside space-y-1 mr-4">
-                <li>يتم إرسال الرسائل فقط للمشاركين الذين ربطوا حساباتهم بـ Telegram</li>
-                <li>التقرير اليومي يحتوي على إحصائيات القراءات المكتملة اليوم</li>
-                <li>التذكير الأسبوعي يُرسل قبل موعد الجمعة بيوم واحد</li>
-              </ul>
-            </div>
+          <CardContent>
+            {notificationHistory && notificationHistory.length > 0 ? (
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                {notificationHistory.map((notification) => (
+                  <div
+                    key={notification.id}
+                    className="flex items-start justify-between p-3 border rounded-lg"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{notification.recipientName}</span>
+                        <Badge variant={notification.status === 'sent' ? 'default' : 'destructive'}>
+                          {notification.status === 'sent' ? (
+                            <><CheckCircle2 className="w-3 h-3 mr-1" /> تم الإرسال</>
+                          ) : (
+                            <><XCircle className="w-3 h-3 mr-1" /> فشل</>
+                          )}
+                        </Badge>
+                        <Badge variant="outline">{notification.notificationType}</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {new Date(notification.createdAt).toLocaleString('ar-SA')}
+                      </p>
+                      {notification.errorMessage && (
+                        <p className="text-sm text-destructive mt-1">{notification.errorMessage}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Clock className="w-12 h-12 mx-auto mb-2" />
+                <p>لا توجد إشعارات مرسلة لهذه الجمعة</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

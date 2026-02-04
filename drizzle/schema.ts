@@ -79,3 +79,37 @@ export const readings = mysqlTable("readings", {
 
 export type Reading = typeof readings.$inferSelect;
 export type InsertReading = typeof readings.$inferInsert;
+
+/**
+ * جدول الإشعارات - يحتوي على سجل جميع الإشعارات المرسلة
+ */
+export const notifications = mysqlTable("notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  fridayNumber: int("fridayNumber").notNull(), // رقم الجمعة
+  recipientName: text("recipientName").notNull(), // اسم المستلم
+  recipientChatId: varchar("recipientChatId", { length: 64 }).notNull(), // Telegram Chat ID
+  messageText: text("messageText").notNull(), // نص الرسالة المرسلة
+  notificationType: mysqlEnum("notificationType", ["reminder", "manual", "scheduled"]).notNull(), // نوع الإشعار
+  status: mysqlEnum("status", ["sent", "failed", "pending"]).default("pending").notNull(), // حالة الإرسال
+  errorMessage: text("errorMessage"), // رسالة الخطأ إن وجدت
+  sentAt: timestamp("sentAt"), // وقت الإرسال الفعلي
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = typeof notifications.$inferInsert;
+
+/**
+ * جدول إعدادات الإشعارات - يحتوي على إعدادات نظام التذكيرات التلقائية
+ */
+export const notificationSettings = mysqlTable("notificationSettings", {
+  id: int("id").autoincrement().primaryKey(),
+  settingKey: varchar("settingKey", { length: 100 }).notNull().unique(), // مفتاح الإعداد
+  settingValue: text("settingValue").notNull(), // قيمة الإعداد
+  description: text("description"), // وصف الإعداد
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type NotificationSetting = typeof notificationSettings.$inferSelect;
+export type InsertNotificationSetting = typeof notificationSettings.$inferInsert;

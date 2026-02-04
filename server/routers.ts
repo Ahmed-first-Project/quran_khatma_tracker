@@ -179,6 +179,77 @@ export const appRouter = router({
   }),
 
   notifications: router({
+    // الحصول على المشاركين المتأخرين
+    getPendingReadings: publicProcedure
+      .input(z.object({ fridayNumber: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getPendingReadings(input.fridayNumber);
+      }),
+    
+    // إرسال تذكيرات يدوية لجميع المتأخرين
+    sendReminders: publicProcedure
+      .input(z.object({ 
+        fridayNumber: z.number(),
+        notificationType: z.enum(['reminder', 'manual', 'scheduled']).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { sendRemindersForFriday } = await import("./notificationService");
+        return await sendRemindersForFriday(
+          input.fridayNumber, 
+          input.notificationType || 'manual'
+        );
+      }),
+    
+    // إرسال تذكير لمشارك واحد
+    sendSingleReminder: publicProcedure
+      .input(z.object({
+        name: z.string(),
+        chatId: z.string(),
+        juzNumber: z.number(),
+        groupNumber: z.number(),
+        fridayNumber: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        const { sendReminderToParticipant } = await import("./notificationService");
+        return await sendReminderToParticipant({
+          ...input,
+          notificationType: 'manual',
+        });
+      }),
+    
+    // الحصول على سجل الإشعارات
+    getByFriday: publicProcedure
+      .input(z.object({ fridayNumber: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getNotificationsByFriday(input.fridayNumber);
+      }),
+    
+    getRecent: publicProcedure
+      .input(z.object({ limit: z.number().optional() }))
+      .query(async ({ input }) => {
+        return await db.getRecentNotifications(input.limit);
+      }),
+    
+    // إدارة الإعدادات
+    getSettings: publicProcedure.query(async () => {
+      return await db.getAllNotificationSettings();
+    }),
+    
+    updateSetting: publicProcedure
+      .input(z.object({
+        key: z.string(),
+        value: z.string(),
+        description: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const success = await db.upsertNotificationSetting(
+          input.key,
+          input.value,
+          input.description
+        );
+        return { success };
+      }),
+    
     sendToAll: publicProcedure
       .input(z.object({ message: z.string() }))
       .mutation(async ({ input }) => {

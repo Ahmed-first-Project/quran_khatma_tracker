@@ -614,3 +614,199 @@ export async function deletePerson(personId: number) {
     return { success: false, message: "حدث خطأ أثناء حذف المشارك" };
   }
 }
+
+// ==================== دوال الإشعارات ====================
+
+import { notifications, notificationSettings } from "../drizzle/schema";
+import { desc } from "drizzle-orm";
+
+/**
+ * الحصول على جميع المشاركين الذين لم يسجلوا قراءاتهم لجمعة معينة
+ */
+export async function getPendingReadings(fridayNumber: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  // جلب جميع القراءات والأشخاص مرة واحدة
+  const allReadings = await db
+    .select()
+    .from(readings)
+    .where(eq(readings.fridayNumber, fridayNumber));
+
+  const allPersons = await db
+    .select()
+    .from(persons)
+    .where(isNotNull(persons.telegramChatId));
+
+  // إنشاء خريطة للأشخاص للوصول السريع
+  const personsMap = new Map<string, { chatId: string; username?: string | null }>();
+  allPersons.forEach(person => {
+    if (person.telegramChatId) {
+      personsMap.set(person.name, {
+        chatId: person.telegramChatId,
+        username: person.telegramUsername,
+      });
+    }
+  });
+
+  const pending: Array<{
+    name: string;
+    chatId: string | null;
+    juzNumber: number;
+    groupNumber: number;
+    personPosition: 1 | 2 | 3;
+  }> = [];
+
+  for (const reading of allReadings) {
+    // الشخص الأول
+    if (!reading.person1Status && reading.person1Name !== 'شخص أول') {
+      const person = personsMap.get(reading.person1Name);
+      if (person) {
+        pending.push({
+          name: reading.person1Name,
+          chatId: person.chatId,
+          juzNumber: reading.juzNumber,
+          groupNumber: reading.groupNumber,
+          personPosition: 1,
+        });
+      }
+    }
+
+    // الشخص الثاني
+    if (!reading.person2Status && reading.person2Name !== 'شخص ثاني') {
+      const person = personsMap.get(reading.person2Name);
+      if (person) {
+        pending.push({
+          name: reading.person2Name,
+          chatId: person.chatId,
+          juzNumber: reading.juzNumber,
+          groupNumber: reading.groupNumber,
+          personPosition: 2,
+        });
+      }
+    }
+
+    // الشخص الثالث
+    if (!reading.person3Status && reading.person3Name !== 'شخص ثالث') {
+      const person = personsMap.get(reading.person3Name);
+      if (person) {
+        pending.push({
+          name: reading.person3Name,
+          chatId: person.chatId,
+          juzNumber: reading.juzNumber,
+          groupNumber: reading.groupNumber,
+          personPosition: 3,
+        });
+      }
+    }
+  }
+
+  return pending;
+}
+
+/**
+ * حفظ إشعار في قاعدة البيانات
+ */
+export async function saveNotification(data: {
+  fridayNumber: number;
+  recipientName: string;
+  recipientChatId: string;
+  messageText: string;
+  notificationType: 'reminder' | 'manual' | 'scheduled';
+  status: 'sent' | 'failed' | 'pending';
+  errorMessage?: string;
+  sentAt?: Date;
+}) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const result = await db.insert(notifications).values(data);
+  return result;
+}
+
+/**
+ * الحصول على جميع الإشعارات لجمعة معينة
+ */
+export async function getNotificationsByFriday(fridayNumber: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db
+    .select()
+    .from(notifications)
+    .where(eq(notifications.fridayNumber, fridayNumber))
+    .orderBy(desc(notifications.createdAt));
+}
+
+/**
+ * الحصول على آخر N إشعار
+ */
+export async function getRecentNotifications(limit: number = 50) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db
+    .select()
+    .from(notifications)
+    .orderBy(desc(notifications.createdAt))
+    .limit(limit);
+}
+
+/**
+ * الحصول على إعداد معين
+ */
+export async function getNotificationSetting(key: string) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const result = await db
+    .select()
+    .from(notificationSettings)
+    .where(eq(notificationSettings.settingKey, key))
+    .limit(1);
+  
+  return result[0] || null;
+}
+
+/**
+ * تحديث أو إنشاء إعداد
+ */
+export async function upsertNotificationSetting(
+  key: string,
+  value: string,
+  description?: string
+) {
+  const db = await getDb();
+  if (!db) return false;
+
+  try {
+    const existing = await getNotificationSetting(key);
+    
+    if (existing) {
+      await db
+        .update(notificationSettings)
+        .set({ settingValue: value, description })
+        .where(eq(notificationSettings.settingKey, key));
+    } else {
+      await db.insert(notificationSettings).values({
+        settingKey: key,
+        settingValue: value,
+        description,
+      });
+    }
+    return true;
+  } catch (error) {
+    console.error("[Database] Error upserting notification setting:", error);
+    return false;
+  }
+}
+
+/**
+ * الحصول على جميع الإعدادات
+ */
+export async function getAllNotificationSettings() {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db.select().from(notificationSettings);
+}
