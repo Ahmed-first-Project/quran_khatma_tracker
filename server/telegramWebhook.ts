@@ -51,6 +51,86 @@ router.post("/api/telegram/webhook", async (req, res) => {
       return res.sendStatus(200);
     }
 
+    // معالجة أمر /تم لتسجيل القراءة
+    if (text === "/تم" || text === "/done") {
+      // التحقق من ربط الحساب
+      const person = await db.getPersonByChatId(chatId);
+      
+      if (!person) {
+        await sendTelegramMessage(
+          chatId,
+          `❌ لم يتم ربط حسابك بعد!\n\n` +
+            `لاستخدام هذا الأمر، يجب عليك أولاً ربط حسابك بإرسال اسمك الكامل.\n\n` +
+            `مثال: أحمد اللاذقاني`
+        );
+        return res.sendStatus(200);
+      }
+      
+      // البحث عن آخر قراءة منتظرة للمشارك
+      const allReadings = await db.getReadingsByPerson(person.name);
+      
+      // فلترة القراءات المنتظرة فقط
+      const pendingReadings = allReadings.filter(reading => {
+        if (reading.person1Name === person.name && !reading.person1Status) return true;
+        if (reading.person2Name === person.name && !reading.person2Status) return true;
+        if (reading.person3Name === person.name && !reading.person3Status) return true;
+        return false;
+      });
+      
+      if (pendingReadings.length === 0) {
+        await sendTelegramMessage(
+          chatId,
+          `✅ ماشاء الله!\n\n` +
+            `لا توجد قراءات منتظرة لك حالياً.\n` +
+            `جميع قراءاتك مسجلة بنجاح! 🎉`
+        );
+        return res.sendStatus(200);
+      }
+      
+      // أخذ أول قراءة منتظرة
+      const nextReading = pendingReadings[0];
+      
+      // تحديد رقم الشخص (1, 2, أو 3)
+      let personNumber: 1 | 2 | 3 = 1;
+      if (nextReading.person2Name === person.name && !nextReading.person2Status) {
+        personNumber = 2;
+      } else if (nextReading.person3Name === person.name && !nextReading.person3Status) {
+        personNumber = 3;
+      }
+      
+      // تسجيل القراءة
+      const success = await db.updateReadingStatus(
+        nextReading.id,
+        personNumber,
+        true,
+        new Date()
+      );
+      
+      if (success) {
+        const remainingCount = pendingReadings.length - 1;
+        await sendTelegramMessage(
+          chatId,
+          `✅ <b>تم تسجيل قراءتك بنجاح!</b>\n\n` +
+            `👤 الاسم: ${person.name}\n` +
+            `📅 الجمعة: ${nextReading.fridayNumber}\n` +
+            `📖 الجزء: ${nextReading.juzNumber}\n` +
+            `📚 الختمة: ${nextReading.khatmaNumber}\n\n` +
+            (remainingCount > 0 
+              ? `📌 باقي لديك ${remainingCount} قراءة منتظرة. أرسل /تم مرة أخرى لتسجيل التالية.`
+              : `🎉 ممتاز! جميع قراءاتك مسجلة بنجاح!`) +
+            `\n\nجزاك الله خيراً على المواظبة! 🌟`
+        );
+      } else {
+        await sendTelegramMessage(
+          chatId,
+          `❌ حدث خطأ أثناء تسجيل القراءة.\n\n` +
+            `يرجى المحاولة مرة أخرى أو التواصل مع المشرف.`
+        );
+      }
+      
+      return res.sendStatus(200);
+    }
+
     // محاولة ربط الحساب بالاسم المرسل
     const result = await db.linkTelegramAccount(text, chatId, username);
 

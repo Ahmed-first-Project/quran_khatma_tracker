@@ -34,6 +34,13 @@ export const appRouter = router({
 
   // القراءات
   readings: router({
+    getAll: publicProcedure.query(async () => {
+      const db_instance = await db.getDb();
+      if (!db_instance) return [];
+      const { readings } = await import("../drizzle/schema");
+      return await db_instance.select().from(readings);
+    }),
+    
     getByFriday: publicProcedure
       .input(z.object({ fridayNumber: z.number() }))
       .query(async ({ input }) => {
@@ -115,6 +122,23 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         return await db.bulkUpdatePersonNames(input.updates);
+      }),
+    
+    addPerson: publicProcedure
+      .input(z.object({
+        name: z.string().min(1, "يجب إدخال اسم صحيح"),
+        groupNumber: z.number().min(1).max(60),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.addPerson(input.name, input.groupNumber);
+      }),
+    
+    deletePerson: publicProcedure
+      .input(z.object({
+        personId: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.deletePerson(input.personId);
       }),
   }),
 

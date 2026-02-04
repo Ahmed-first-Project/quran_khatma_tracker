@@ -560,3 +560,57 @@ export async function getReadingsByDate(date: Date) {
       )
     );
 }
+
+export async function addPerson(name: string, groupNumber: number) {
+  const db = await getDb();
+  if (!db) return { success: false, message: "قاعدة البيانات غير متاحة" };
+
+  try {
+    // إضافة الشخص إلى جدول persons فقط
+    // لا نضيف إلى القراءات تلقائياً - يتم ذلك يدوياً من الواجهة
+    const result = await db.insert(persons).values({ name });
+    const personId = result[0].insertId;
+
+    return { 
+      success: true, 
+      message: "تمت إضافة المشارك بنجاح. يمكنك الآن ربطه بالقراءات من صفحة إدارة المشاركين",
+      personId 
+    };
+  } catch (error) {
+    console.error("[Database] Error adding person:", error);
+    return { success: false, message: "حدث خطأ أثناء إضافة المشارك" };
+  }
+}
+
+export async function deletePerson(personId: number) {
+  const db = await getDb();
+  if (!db) return { success: false, message: "قاعدة البيانات غير متاحة" };
+
+  try {
+    // الحصول على اسم الشخص
+    const person = await db.select().from(persons).where(eq(persons.id, personId)).limit(1);
+    if (person.length === 0) {
+      return { success: false, message: "الشخص غير موجود" };
+    }
+
+    const personName = person[0].name;
+
+    // حذف جميع القراءات التي تحتوي على هذا الشخص
+    // نحذف السطور التي يكون فيها الشخص person1, person2, أو person3
+    await db.delete(readings).where(
+      or(
+        eq(readings.person1Name, personName),
+        eq(readings.person2Name, personName),
+        eq(readings.person3Name, personName)
+      )
+    );
+
+    // حذف الشخص من جدول persons
+    await db.delete(persons).where(eq(persons.id, personId));
+
+    return { success: true, message: "تم حذف المشارك بنجاح" };
+  } catch (error) {
+    console.error("[Database] Error deleting person:", error);
+    return { success: false, message: "حدث خطأ أثناء حذف المشارك" };
+  }
+}

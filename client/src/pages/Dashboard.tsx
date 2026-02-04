@@ -156,7 +156,7 @@ export default function Dashboard() {
         )}
 
         {/* Quick Links */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
           <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/50">
             <CardContent className="pt-6 text-center">
               <div className="text-5xl mb-3">📖</div>
@@ -175,6 +175,18 @@ export default function Dashboard() {
                 عرض إحصائيات مفصلة لجميع الجمعات والأفراد
               </p>
             </CardContent>
+          </Card>
+          
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-green-500/50">
+            <a href="/manage-groups">
+              <CardContent className="pt-6 text-center">
+                <div className="text-5xl mb-3">👥</div>
+                <h3 className="text-xl font-bold mb-2">إدارة المجموعات</h3>
+                <p className="text-sm text-muted-foreground">
+                  إضافة، تعديل، وحذف المشاركين وربطهم بالمجموعات
+                </p>
+              </CardContent>
+            </a>
           </Card>
         </div>
       </main>
