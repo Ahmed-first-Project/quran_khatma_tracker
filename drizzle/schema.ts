@@ -24,7 +24,11 @@ export type InsertUser = typeof users.$inferInsert;
 export const persons = mysqlTable("persons", {
   id: int("id").autoincrement().primaryKey(),
   name: text("name").notNull(),
+  telegramChatId: varchar("telegramChatId", { length: 64 }), // Telegram Chat ID للمشارك
+  telegramUsername: varchar("telegramUsername", { length: 64 }), // Telegram Username (اختياري)
+  isAdmin: boolean("isAdmin").default(false).notNull(), // هل هو مشرف
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export type Person = typeof persons.$inferSelect;

@@ -98,6 +98,72 @@ export const appRouter = router({
   }),
 
   // الإحصائيات
+  telegram: router({
+    linkAccount: publicProcedure
+      .input(z.object({
+        personName: z.string(),
+        chatId: z.string(),
+        username: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.linkTelegramAccount(
+          input.personName,
+          input.chatId,
+          input.username
+        );
+      }),
+    
+    getPersonByChatId: publicProcedure
+      .input(z.object({ chatId: z.string() }))
+      .query(async ({ input }) => {
+        return await db.getPersonByChatId(input.chatId);
+      }),
+    
+    getAllAdmins: publicProcedure.query(async () => {
+      return await db.getAllAdmins();
+    }),
+    
+    setAdmin: publicProcedure
+      .input(z.object({
+        personId: z.number(),
+        isAdmin: z.boolean(),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.setPersonAsAdmin(input.personId, input.isAdmin);
+      }),
+  }),
+
+  notifications: router({
+    sendToAll: publicProcedure
+      .input(z.object({ message: z.string() }))
+      .mutation(async ({ input }) => {
+        const { sendCustomMessageToAll } = await import("./notifications");
+        return await sendCustomMessageToAll(input.message);
+      }),
+    
+    sendToAdmins: publicProcedure
+      .input(z.object({ message: z.string() }))
+      .mutation(async ({ input }) => {
+        const { sendCustomMessageToAdmins } = await import("./notifications");
+        return await sendCustomMessageToAdmins(input.message);
+      }),
+    
+    sendDailyReport: publicProcedure
+      .mutation(async () => {
+        const { sendDailyReportToAdmins } = await import("./notifications");
+        await sendDailyReportToAdmins();
+        return { success: true };
+      }),
+    
+    sendWeeklyReminder: publicProcedure
+      .input(z.object({ fridayNumber: z.number() }))
+      .mutation(async ({ input }) => {
+        const { sendWeeklyReminder } = await import("./notifications");
+        await sendWeeklyReminder(input.fridayNumber);
+        return { success: true };
+      }),
+  }),
+  
   stats: router({
     getFridayStats: publicProcedure
       .input(z.object({ fridayNumber: z.number() }))

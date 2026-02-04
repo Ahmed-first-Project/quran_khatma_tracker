@@ -1,6 +1,6 @@
-import { eq, and, or, like, sql } from "drizzle-orm";
+import { eq, and, or, like, sql, isNotNull, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, fridays, readings, persons } from "../drizzle/schema";
+import { InsertUser, users, fridays, readings, persons, Person } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -393,4 +393,170 @@ export async function bulkUpdatePersonNames(updates: Array<{ id: number; name: s
     console.error("[Database] Error bulk updating person names:", error);
     return { success: false, message: "حدث خطأ أثناء التحديث الجماعي" };
   }
+}
+
+
+// ==================== Telegram Integration ====================
+
+export async function linkTelegramAccount(
+  personName: string,
+  chatId: string,
+  username?: string
+): Promise<{ success: boolean; message: string; person?: Person }> {
+  const db = await getDb();
+  if (!db) return { success: false, message: "قاعدة البيانات غير متاحة" };
+
+  try {
+    // البحث عن الشخص بالاسم
+    const matchingPersons = await db
+      .select()
+      .from(persons)
+      .where(eq(persons.name, personName));
+
+    if (matchingPersons.length === 0) {
+      return {
+        success: false,
+        message: `لم يتم العثور على "${personName}" في قائمة المشاركين`,
+      };
+    }
+
+    if (matchingPersons.length > 1) {
+      return {
+        success: false,
+        message: `يوجد أكثر من شخص بنفس الاسم "${personName}". يرجى التواصل مع المشرف`,
+      };
+    }
+
+    const person = matchingPersons[0];
+
+    // التحقق من عدم ربط الحساب مسبقاً
+    if (person.telegramChatId && person.telegramChatId !== chatId) {
+      return {
+        success: false,
+        message: "هذا الحساب مرتبط بحساب Telegram آخر",
+      };
+    }
+
+    // ربط الحساب
+    await db
+      .update(persons)
+      .set({
+        telegramChatId: chatId,
+        telegramUsername: username || null,
+      })
+      .where(eq(persons.id, person.id));
+
+    const updatedPerson = await db
+      .select()
+      .from(persons)
+      .where(eq(persons.id, person.id))
+      .limit(1);
+
+    return {
+      success: true,
+      message: "تم ربط حسابك بنجاح!",
+      person: updatedPerson[0],
+    };
+  } catch (error) {
+    console.error("[Database] Error linking Telegram account:", error);
+    return { success: false, message: "حدث خطأ أثناء ربط الحساب" };
+  }
+}
+
+export async function getPersonByChatId(chatId: string): Promise<Person | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db
+    .select()
+    .from(persons)
+    .where(eq(persons.telegramChatId, chatId))
+    .limit(1);
+
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getAllAdmins(): Promise<Person[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db
+    .select()
+    .from(persons)
+    .where(eq(persons.isAdmin, true));
+}
+
+export async function setPersonAsAdmin(personId: number, isAdmin: boolean): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
+  try {
+    await db
+      .update(persons)
+      .set({ isAdmin })
+      .where(eq(persons.id, personId));
+
+    return true;
+  } catch (error) {
+    console.error("[Database] Error setting admin status:", error);
+    return false;
+  }
+}
+
+export async function getReadingById(readingId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(readings).where(eq(readings.id, readingId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getPersonById(personId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(persons).where(eq(persons.id, personId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getLinkedAdmins(): Promise<Person[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db
+    .select()
+    .from(persons)
+    .where(and(eq(persons.isAdmin, true), isNotNull(persons.telegramChatId)));
+}
+
+export async function getAllLinkedPersons(): Promise<Person[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db
+    .select()
+    .from(persons)
+    .where(isNotNull(persons.telegramChatId));
+}
+
+export async function getReadingsByDate(date: Date) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+  
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+  
+  // إرجاع جميع القراءات التي تم تحديثها اليوم
+  return await db
+    .select()
+    .from(readings)
+    .where(
+      and(
+        gte(readings.updatedAt, startOfDay),
+        lte(readings.updatedAt, endOfDay)
+      )
+    );
 }
