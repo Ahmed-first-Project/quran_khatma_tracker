@@ -10,6 +10,7 @@ import Statistics from "./pages/Statistics";
 import ManageParticipants from "./pages/ManageParticipants";
 import LinkTelegram from "./pages/LinkTelegram";
 import Notifications from "./pages/Notifications";
+import MyReadings from "./pages/MyReadings";
 import { Button } from "./components/ui/button";
 import { Home, BookOpen, BarChart3, Users } from "lucide-react";
 
@@ -66,6 +67,7 @@ function Router() {
           <Route path="/manage" component={ManageParticipants} />
           <Route path="/link-telegram" component={LinkTelegram} />
           <Route path="/notifications" component={Notifications} />
+          <Route path="/my-readings" component={MyReadings} />
           <Route path="/404" component={NotFound} />
           <Route component={NotFound} />
         </Switch>

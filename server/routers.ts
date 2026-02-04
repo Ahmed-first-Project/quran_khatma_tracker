@@ -68,6 +68,27 @@ export const appRouter = router({
         );
         return { success };
       }),
+    
+    getByPersonName: publicProcedure
+      .input(z.object({ name: z.string() }))
+      .query(async ({ input }) => {
+        return await db.getReadingsByPerson(input.name);
+      }),
+    
+    markComplete: publicProcedure
+      .input(z.object({
+        readingId: z.number(),
+        position: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        const success = await db.updateReadingStatus(
+          input.readingId,
+          input.position as 1 | 2 | 3,
+          true,
+          new Date()
+        );
+        return { success };
+      }),
   }),
 
   // الأشخاص
