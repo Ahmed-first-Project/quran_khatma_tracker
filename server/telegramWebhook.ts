@@ -51,7 +51,7 @@ router.post("/api/telegram/webhook", async (req, res) => {
 
 ✅ **/تم** - تسجيل قراءة الجزء المخصص لك
 
-📊 **/حالتي** - عرض حالة قراءاتك (قريباً)
+    📊 **/حالتي** - عرض حالة قراءاتك الشاملة
 
 ❓ **/help** - عرض هذه القائمة
 
@@ -76,6 +76,77 @@ router.post("/api/telegram/webhook", async (req, res) => {
           `للربط بحسابك، أرسل اسمك الكامل كما هو مسجل في قائمة المشاركين.\n\n` +
           `مثال: أحمد اللاذقاني`
       );
+      return res.sendStatus(200);
+    }
+
+    // معالجة أمر /حالتي لعرض حالة المشارك
+    if (text === "/حالتي" || text === "/status") {
+      // التحقق من ربط الحساب
+      const person = await db.getPersonByChatId(chatId);
+      
+      if (!person) {
+        await sendTelegramMessage(
+          chatId,
+          `❌ لم يتم ربط حسابك بعد!\n\n` +
+            `لاستخدام هذا الأمر، يجب عليك أولاً ربط حسابك بإرسال اسمك الكامل.\n\n` +
+            `مثال: أحمد اللاذقاني`
+        );
+        return res.sendStatus(200);
+      }
+      
+      // حساب الإحصائيات
+      const consecutiveReadings = await db.getConsecutiveReadings(person.name);
+      const completionRate = await db.getCompletionRate(person.name);
+      const totalCompleted = await db.getTotalCompletedReadings(person.name);
+      const pendingCount = await db.getPendingReadingsCount(person.name);
+      const lastReading = await db.getLastCompletedReading(person.name);
+      const groupRanking = await db.getGroupRanking(person.name);
+      
+      // بناء رسالة الحالة
+      let statusMessage = `📊 <b>حالة قراءاتك</b>\n\n`;
+      statusMessage += `👤 الاسم: ${person.name}\n`;
+      statusMessage += `───────────────\n\n`;
+      
+      // إحصائيات القراءات
+      statusMessage += `✅ <b>قراءات مكتملة:</b> ${totalCompleted}\n`;
+      statusMessage += `⏳ <b>قراءات منتظرة:</b> ${pendingCount}\n`;
+      statusMessage += `🔥 <b>قراءات متتالية:</b> ${consecutiveReadings}\n`;
+      statusMessage += `💯 <b>نسبة الإنجاز:</b> ${completionRate}%\n\n`;
+      
+      // آخر قراءة
+      if (lastReading) {
+        const lastReadingDate = new Date(lastReading.completedAt);
+        const formattedDate = lastReadingDate.toLocaleDateString('ar-SA', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+        statusMessage += `📖 <b>آخر قراءة:</b>\n`;
+        statusMessage += `   • الجمعة: ${lastReading.fridayNumber}\n`;
+        statusMessage += `   • الجزء: ${lastReading.juzNumber}\n`;
+        statusMessage += `   • التاريخ: ${formattedDate}\n\n`;
+      } else {
+        statusMessage += `📖 <b>آخر قراءة:</b> لم تسجل بعد\n\n`;
+      }
+      
+      // ترتيب المجموعة
+      if (groupRanking) {
+        const rankEmoji = groupRanking.rank === 1 ? '🥇' : groupRanking.rank === 2 ? '🥈' : groupRanking.rank === 3 ? '🥉' : '🏅';
+        statusMessage += `${rankEmoji} <b>ترتيبك في المجموعة:</b> ${groupRanking.rank} من ${groupRanking.totalMembers}\n\n`;
+      }
+      
+      // رسائل تحفيزية
+      if (consecutiveReadings >= 10) {
+        statusMessage += `🌟 ماشاء الله! التزام مميز!\n`;
+      } else if (consecutiveReadings >= 5) {
+        statusMessage += `💪 رائع! استمر على هذا التميز!\n`;
+      } else if (pendingCount > 0) {
+        statusMessage += `📌 لديك ${pendingCount} قراءة منتظرة. أرسل /تم لتسجيلها!\n`;
+      }
+      
+      statusMessage += `\nجزاك الله خيراً 🤲`;
+      
+      await sendTelegramMessage(chatId, statusMessage);
       return res.sendStatus(200);
     }
 

@@ -1036,3 +1036,163 @@ export async function getTotalCompletedReadings(personName: string): Promise<num
     return 0;
   }
 }
+
+/**
+ * حساب عدد القراءات المنتظرة للمشارك
+ */
+export async function getPendingReadingsCount(personName: string): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  try {
+    const allReadings = await db
+      .select()
+      .from(readings)
+      .where(
+        or(
+          eq(readings.person1Name, personName),
+          eq(readings.person2Name, personName),
+          eq(readings.person3Name, personName)
+        )
+      );
+
+    let pending = 0;
+    for (const reading of allReadings) {
+      if (reading.person1Name === personName && !reading.person1Status) pending++;
+      else if (reading.person2Name === personName && !reading.person2Status) pending++;
+      else if (reading.person3Name === personName && !reading.person3Status) pending++;
+    }
+
+    return pending;
+  } catch (error) {
+    console.error("[Database] Error getting pending readings count:", error);
+    return 0;
+  }
+}
+
+/**
+ * الحصول على آخر قراءة مسجلة للمشارك
+ */
+export async function getLastCompletedReading(personName: string) {
+  const db = await getDb();
+  if (!db) return null;
+
+  try {
+    const allReadings = await db
+      .select()
+      .from(readings)
+      .where(
+        or(
+          eq(readings.person1Name, personName),
+          eq(readings.person2Name, personName),
+          eq(readings.person3Name, personName)
+        )
+      )
+      .orderBy(desc(readings.fridayNumber));
+
+    for (const reading of allReadings) {
+      if (reading.person1Name === personName && reading.person1Status && reading.person1Date) {
+        return {
+          fridayNumber: reading.fridayNumber,
+          juzNumber: reading.juzNumber,
+          khatmaNumber: reading.khatmaNumber,
+          completedAt: reading.person1Date,
+        };
+      } else if (reading.person2Name === personName && reading.person2Status && reading.person2Date) {
+        return {
+          fridayNumber: reading.fridayNumber,
+          juzNumber: reading.juzNumber,
+          khatmaNumber: reading.khatmaNumber,
+          completedAt: reading.person2Date,
+        };
+      } else if (reading.person3Name === personName && reading.person3Status && reading.person3Date) {
+        return {
+          fridayNumber: reading.fridayNumber,
+          juzNumber: reading.juzNumber,
+          khatmaNumber: reading.khatmaNumber,
+          completedAt: reading.person3Date,
+        };
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error("[Database] Error getting last completed reading:", error);
+    return null;
+  }
+}
+
+/**
+ * حساب ترتيب المشارك في مجموعته حسب عدد القراءات المكتملة
+ */
+export async function getGroupRanking(personName: string): Promise<{ rank: number; totalMembers: number } | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  try {
+    // الحصول على معلومات المشارك
+    const person = await db
+      .select()
+      .from(persons)
+      .where(eq(persons.name, personName))
+      .limit(1);
+
+    if (person.length === 0) return null;
+
+    // الحصول على رقم المجموعة من أول قراءة
+    const firstReading = await db
+      .select()
+      .from(readings)
+      .where(
+        or(
+          eq(readings.person1Name, personName),
+          eq(readings.person2Name, personName),
+          eq(readings.person3Name, personName)
+        )
+      )
+      .limit(1);
+
+    if (firstReading.length === 0) return null;
+
+    const groupNumber = firstReading[0].groupNumber;
+
+    // الحصول على جميع القراءات في هذه المجموعة
+    const groupReadings = await db
+      .select()
+      .from(readings)
+      .where(eq(readings.groupNumber, groupNumber));
+
+    if (groupReadings.length === 0) return null;
+
+    // حساب عدد القراءات المكتملة لكل عضو
+    const memberStats: { [name: string]: number } = {};
+
+    for (const reading of groupReadings) {
+      // الشخص الأول
+      if (!memberStats[reading.person1Name]) memberStats[reading.person1Name] = 0;
+      if (reading.person1Status) memberStats[reading.person1Name]++;
+
+      // الشخص الثاني
+      if (!memberStats[reading.person2Name]) memberStats[reading.person2Name] = 0;
+      if (reading.person2Status) memberStats[reading.person2Name]++;
+
+      // الشخص الثالث
+      if (!memberStats[reading.person3Name]) memberStats[reading.person3Name] = 0;
+      if (reading.person3Status) memberStats[reading.person3Name]++;
+    }
+
+    // ترتيب الأعضاء حسب عدد القراءات
+    const sortedMembers = Object.entries(memberStats).sort((a, b) => b[1] - a[1]);
+
+    // البحث عن ترتيب المشارك
+    const rank = sortedMembers.findIndex(([name]) => name === personName) + 1;
+
+    return {
+      rank,
+      totalMembers: sortedMembers.length,
+    };
+  } catch (error) {
+    console.error("[Database] Error getting group ranking:", error);
+    return null;
+  }
+}
