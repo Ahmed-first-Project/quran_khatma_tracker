@@ -1,4 +1,4 @@
-import { eq, and, or, like, sql, isNotNull, gte, lte } from "drizzle-orm";
+import { eq, and, or, like, sql, isNotNull, gte, lte, asc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, fridays, readings, persons, Person } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -809,4 +809,230 @@ export async function getAllNotificationSettings() {
   if (!db) return [];
 
   return await db.select().from(notificationSettings);
+}
+
+/**
+ * حساب عدد القراءات المتتالية للمشارك
+ */
+export async function getConsecutiveReadings(personName: string): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  try {
+    // الحصول على جميع القراءات مرتبة حسب رقم الجمعة تنازلياً
+    const allReadings = await db
+      .select()
+      .from(readings)
+      .where(
+        or(
+          eq(readings.person1Name, personName),
+          eq(readings.person2Name, personName),
+          eq(readings.person3Name, personName)
+        )
+      )
+      .orderBy(desc(readings.fridayNumber));
+
+    let consecutive = 0;
+    let lastFridayNumber: number | null = null;
+
+    for (const reading of allReadings) {
+      // تحديد أي شخص في القراءة
+      let isCompleted = false;
+      if (reading.person1Name === personName && reading.person1Status) {
+        isCompleted = true;
+      } else if (reading.person2Name === personName && reading.person2Status) {
+        isCompleted = true;
+      } else if (reading.person3Name === personName && reading.person3Status) {
+        isCompleted = true;
+      }
+
+      // إذا كانت القراءة مكتملة
+      if (isCompleted) {
+        // إذا كانت أول قراءة أو متتالية مع السابقة
+        if (lastFridayNumber === null || reading.fridayNumber === lastFridayNumber - 1) {
+          consecutive++;
+          lastFridayNumber = reading.fridayNumber;
+        } else {
+          // إذا كانت هناك فجوة، نتوقف
+          break;
+        }
+      } else {
+        // إذا كانت القراءة غير مكتملة، نتوقف
+        break;
+      }
+    }
+
+    return consecutive;
+  } catch (error) {
+    console.error("[Database] Error getting consecutive readings:", error);
+    return 0;
+  }
+}
+
+/**
+ * حساب نسبة الإنجاز الإجمالية للمشارك
+ */
+export async function getCompletionRate(personName: string): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  try {
+    // الحصول على جميع القراءات
+    const allReadings = await db
+      .select()
+      .from(readings)
+      .where(
+        or(
+          eq(readings.person1Name, personName),
+          eq(readings.person2Name, personName),
+          eq(readings.person3Name, personName)
+        )
+      );
+
+    if (allReadings.length === 0) return 0;
+
+    // حساب عدد القراءات المكتملة
+    let completed = 0;
+    for (const reading of allReadings) {
+      if (reading.person1Name === personName && reading.person1Status) completed++;
+      else if (reading.person2Name === personName && reading.person2Status) completed++;
+      else if (reading.person3Name === personName && reading.person3Status) completed++;
+    }
+
+    // حساب النسبة المئوية
+    return Math.round((completed / allReadings.length) * 100);
+  } catch (error) {
+    console.error("[Database] Error getting completion rate:", error);
+    return 0;
+  }
+}
+
+/**
+ * التحقق من أن المشارك هو الأول في مجموعته لهذه الجمعة
+ */
+export async function isFirstInGroup(personName: string, fridayNumber: number, groupNumber: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
+  try {
+    // الحصول على القراءة لهذه المجموعة في هذه الجمعة
+    const groupReading = await db
+      .select()
+      .from(readings)
+      .where(
+        and(
+          eq(readings.groupNumber, groupNumber),
+          eq(readings.fridayNumber, fridayNumber)
+        )
+      )
+      .limit(1);
+
+    if (groupReading.length === 0) return false;
+
+    const reading = groupReading[0];
+
+    // التحقق من أول من سجل في المجموعة
+    const completionDates: { name: string; date: Date | null }[] = [
+      { name: reading.person1Name, date: reading.person1Date },
+      { name: reading.person2Name, date: reading.person2Date },
+      { name: reading.person3Name, date: reading.person3Date },
+    ];
+
+    // فلترة من أكملوا القراءة
+    const completed = completionDates.filter((p) => p.date !== null);
+
+    if (completed.length === 0) return false;
+
+    // ترتيب حسب التاريخ
+    completed.sort((a, b) => {
+      if (!a.date || !b.date) return 0;
+      return a.date.getTime() - b.date.getTime();
+    });
+
+    // التحقق من أن المشارك هو الأول
+    return completed[0].name === personName;
+  } catch (error) {
+    console.error("[Database] Error checking first in group:", error);
+    return false;
+  }
+}
+
+/**
+ * التحقق من أن المشارك هو الأول في الجمعة بشكل عام
+ */
+export async function isFirstOverall(personName: string, fridayNumber: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
+  try {
+    // الحصول على جميع القراءات في هذه الجمعة
+    const allReadings = await db
+      .select()
+      .from(readings)
+      .where(eq(readings.fridayNumber, fridayNumber));
+
+    if (allReadings.length === 0) return false;
+
+    // جمع جميع تواريخ الإكمال
+    const completionDates: { name: string; date: Date | null }[] = [];
+
+    for (const reading of allReadings) {
+      if (reading.person1Status && reading.person1Date) {
+        completionDates.push({ name: reading.person1Name, date: reading.person1Date });
+      }
+      if (reading.person2Status && reading.person2Date) {
+        completionDates.push({ name: reading.person2Name, date: reading.person2Date });
+      }
+      if (reading.person3Status && reading.person3Date) {
+        completionDates.push({ name: reading.person3Name, date: reading.person3Date });
+      }
+    }
+
+    if (completionDates.length === 0) return false;
+
+    // ترتيب حسب التاريخ
+    completionDates.sort((a, b) => {
+      if (!a.date || !b.date) return 0;
+      return a.date.getTime() - b.date.getTime();
+    });
+
+    // التحقق من أن المشارك هو الأول
+    return completionDates[0].name === personName;
+  } catch (error) {
+    console.error("[Database] Error checking first overall:", error);
+    return false;
+  }
+}
+
+/**
+ * الحصول على إجمالي عدد القراءات المكتملة للمشارك
+ */
+export async function getTotalCompletedReadings(personName: string): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  try {
+    const allReadings = await db
+      .select()
+      .from(readings)
+      .where(
+        or(
+          eq(readings.person1Name, personName),
+          eq(readings.person2Name, personName),
+          eq(readings.person3Name, personName)
+        )
+      );
+
+    let completed = 0;
+    for (const reading of allReadings) {
+      if (reading.person1Name === personName && reading.person1Status) completed++;
+      else if (reading.person2Name === personName && reading.person2Status) completed++;
+      else if (reading.person3Name === personName && reading.person3Status) completed++;
+    }
+
+    return completed;
+  } catch (error) {
+    console.error("[Database] Error getting total completed readings:", error);
+    return 0;
+  }
 }

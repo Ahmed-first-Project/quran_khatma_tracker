@@ -1,6 +1,7 @@
 import { Router } from "express";
 import * as db from "./db";
 import { sendTelegramMessage } from "./telegram";
+import { getMotivationalMessage, MotivationalContext } from "./motivationalMessages";
 
 const router = Router();
 
@@ -134,6 +135,26 @@ router.post("/api/telegram/webhook", async (req, res) => {
       );
       
       if (success) {
+        // حساب الإنجازات للرسائل التحفيزية
+        const consecutiveReadings = await db.getConsecutiveReadings(person.name);
+        const completionRate = await db.getCompletionRate(person.name);
+        const totalCompleted = await db.getTotalCompletedReadings(person.name);
+        const isFirstInGroupResult = await db.isFirstInGroup(person.name, nextReading.fridayNumber, nextReading.groupNumber);
+        const isFirstOverallResult = await db.isFirstOverall(person.name, nextReading.fridayNumber);
+        
+        // إنشاء سياق الرسائل التحفيزية
+        const motivationalContext: MotivationalContext = {
+          consecutiveReadings,
+          totalCompleted,
+          completionRate,
+          isFirstInGroup: isFirstInGroupResult,
+          isFirstOverall: isFirstOverallResult,
+          weekNumber: nextReading.fridayNumber,
+        };
+        
+        // الحصول على الرسالة التحفيزية
+        const motivationalMessage = getMotivationalMessage(motivationalContext);
+        
         const remainingCount = pendingReadings.length - 1;
         await sendTelegramMessage(
           chatId,
@@ -142,10 +163,10 @@ router.post("/api/telegram/webhook", async (req, res) => {
             `📅 الجمعة: ${nextReading.fridayNumber}\n` +
             `📖 الجزء: ${nextReading.juzNumber}\n` +
             `📚 الختمة: ${nextReading.khatmaNumber}\n\n` +
+            `${motivationalMessage}\n\n` +
             (remainingCount > 0 
               ? `📌 باقي لديك ${remainingCount} قراءة منتظرة. أرسل /تم مرة أخرى لتسجيل التالية.`
-              : `🎉 ممتاز! جميع قراءاتك مسجلة بنجاح!`) +
-            `\n\nجزاك الله خيراً على المواظبة! 🌟`
+              : `🎉 ممتاز! جميع قراءاتك مسجلة بنجاح!`)
         );
       } else {
         await sendTelegramMessage(
