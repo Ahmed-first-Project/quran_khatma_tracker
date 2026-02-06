@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Search, Download, RefreshCw, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { exportReadings } from "@/lib/exportUtils";
+import { getQuranJuzLink } from "@/../../shared/quranLinks";
 
 export default function Readings() {
   const [selectedFriday, setSelectedFriday] = useState<number>(181);
@@ -241,6 +242,7 @@ export default function Readings() {
                 <thead>
                   <tr className="bg-primary/10 border-b-2 border-primary/20">
                     <th className="p-3 text-right font-bold">الجزء</th>
+                    <th className="p-3 text-right font-bold">رابط المصحف</th>
                     <th className="p-3 text-right font-bold">الختمة</th>
                     <th className="p-3 text-right font-bold">المجموعة</th>
                     <th className="p-3 text-right font-bold" colSpan={3}>الشخص الأول</th>
@@ -265,7 +267,7 @@ export default function Readings() {
                 <tbody>
                   {filteredReadings.length === 0 ? (
                     <tr>
-                      <td colSpan={12} className="p-8 text-center text-muted-foreground">
+                      <td colSpan={13} className="p-8 text-center text-muted-foreground">
                         لا توجد نتائج
                       </td>
                     </tr>
@@ -276,6 +278,16 @@ export default function Readings() {
                         className="border-b hover:bg-muted/30 transition-colors"
                       >
                         <td className="p-3 font-medium">{reading.juzNumber}</td>
+                        <td className="p-3">
+                          <a
+                            href={getQuranJuzLink(reading.juzNumber)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline text-sm font-medium"
+                          >
+                            📝 افتح المصحف
+                          </a>
+                        </td>
                         <td className="p-3">{reading.khatmaNumber}</td>
                         <td className="p-3">{reading.groupNumber}</td>
                         
