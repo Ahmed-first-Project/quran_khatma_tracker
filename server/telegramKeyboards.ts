@@ -124,7 +124,7 @@ export function getQuranKeyboard(juzNumber?: number): InlineKeyboardMarkup {
     return {
       inline_keyboard: [
         [
-          { text: `📖 افتح الجزء ${juzNumber}`, url: `https://app.quranflash.com/mushaf?startpage=${(juzNumber - 1) * 20 + 1}` }
+          { text: `📖 افتح الجزء ${juzNumber}`, url: `https://quran.com/juz/${juzNumber}` }
         ],
         [
           { text: "🏠 القائمة الرئيسية", callback_data: "main_menu" }
@@ -136,7 +136,7 @@ export function getQuranKeyboard(juzNumber?: number): InlineKeyboardMarkup {
     return {
       inline_keyboard: [
         [
-          { text: "📖 افتح المصحف", url: "https://app.quranflash.com/mushaf" }
+          { text: "📖 افتح المصحف", url: "https://quran.com" }
         ],
         [
           { text: "🏠 القائمة الرئيسية", callback_data: "main_menu" }
