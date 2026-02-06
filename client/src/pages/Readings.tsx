@@ -24,14 +24,14 @@ export default function Readings() {
     { enabled: !!selectedFriday }
   );
 
-  // التحديث التلقائي كل 30 ثانية
+  // التحديث التلقائي كل 5 ثوانٍ
   useEffect(() => {
     if (!autoRefresh) return;
     
     const interval = setInterval(() => {
       utils.readings.getByFriday.invalidate({ fridayNumber: selectedFriday });
       setLastUpdate(new Date());
-    }, 30000); // 30 ثانية
+    }, 5000); // 5 ثوانٍ
 
     return () => clearInterval(interval);
   }, [autoRefresh, selectedFriday, utils]);

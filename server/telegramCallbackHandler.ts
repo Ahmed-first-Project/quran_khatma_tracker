@@ -362,18 +362,32 @@ async function handleOpenQuran(chatId: string): Promise<void> {
     return;
   }
 
-  // البحث عن الجزء المطلوب
-  const pendingReading = await db.getNextPendingReadingForPerson(person.name);
+  // الحصول على الجمعة الحالية
+  const currentFriday = await db.getCurrentFriday();
   
-  if (pendingReading) {
+  if (!currentFriday) {
+    await sendTelegramMessage(
+      chatId,
+      `📖 <b>افتح المصحف الشريف</b>\n\n` +
+        `يمكنك قراءة القرآن الكريم بالرسم العثماني (مصحف المدينة) مجاناً.`,
+      { reply_markup: getQuranKeyboard() }
+    );
+    return;
+  }
+  
+  // الحصول على القراءة المطلوبة للجمعة الحالية
+  const currentReading = await db.getReadingForPersonAndFriday(person.name, currentFriday.fridayNumber);
+  
+  if (currentReading) {
     await sendTelegramMessage(
       chatId,
       `📖 <b>افتح المصحف الشريف</b>\n\n` +
         `جزؤك المطلوب هذا الأسبوع:\n` +
-        `📅 الجمعة: ${pendingReading.fridayNumber}\n` +
-        `📖 الجزء: ${pendingReading.juzNumber}\n\n` +
+        `📅 الجمعة: ${currentReading.fridayNumber} (${currentFriday.dateGregorian})\n` +
+        `👥 المجموعة: ${currentReading.groupNumber}\n` +
+        `📖 الجزء: ${currentReading.juzNumber}\n\n` +
         `اضغط الزر أدناه لفتح المصحف مباشرة على جزئك.`,
-      { reply_markup: getQuranKeyboard(pendingReading.juzNumber) }
+      { reply_markup: getQuranKeyboard(currentReading.juzNumber) }
     );
   } else {
     await sendTelegramMessage(
