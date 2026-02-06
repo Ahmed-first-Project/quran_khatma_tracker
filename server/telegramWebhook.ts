@@ -2,6 +2,7 @@ import { Router } from "express";
 import * as db from "./db";
 import { sendTelegramMessage } from "./telegram";
 import { getMotivationalMessage, MotivationalContext } from "./motivationalMessages";
+import { recordUpdate, recordError } from "./botHealthMonitor";
 
 const router = Router();
 
@@ -49,6 +50,9 @@ interface TelegramUpdate {
 router.post("/api/telegram/webhook", async (req, res) => {
   try {
     const update: TelegramUpdate = req.body;
+    
+    // تسجيل استلام update لمراقبة صحة البوت
+    recordUpdate();
 
     // معالجة callback queries (الأزرار التفاعلية)
     if (update.callback_query) {
@@ -307,8 +311,9 @@ router.post("/api/telegram/webhook", async (req, res) => {
     }
 
     res.sendStatus(200);
-  } catch (error) {
+  } catch (error: any) {
     console.error("[Telegram Webhook] Error:", error);
+    recordError(error.message || String(error));
     res.sendStatus(500);
   }
 });

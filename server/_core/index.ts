@@ -9,6 +9,7 @@ import { createContext } from "./context";
 import telegramWebhook from "../telegramWebhook";
 import { serveStatic, setupVite } from "./vite";
 import { startScheduler } from "../scheduler";
+import { startHealthMonitoring } from "../botHealthMonitor";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -66,6 +67,9 @@ async function startServer() {
     
     // تشغيل نظام الجدولة التلقائية
     startScheduler();
+    
+    // تشغيل نظام مراقبة صحة البوت
+    startHealthMonitoring();
   });
 }
 

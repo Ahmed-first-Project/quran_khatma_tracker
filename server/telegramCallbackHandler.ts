@@ -25,8 +25,13 @@ export async function handleCallbackQuery(
   data: string,
   firstName: string
 ): Promise<void> {
-  // الرد على callback query لإزالة علامة التحميل
-  await answerCallbackQuery(callbackQueryId);
+  try {
+    // الرد على callback query فوراً لإزالة علامة التحميل (خلال 10 ثواني)
+    // لا ننتظر النتيجة حتى لا يتأخر الرد
+    answerCallbackQuery(callbackQueryId).catch(err => {
+      // تجاهل الأخطاء (مثل "query is too old")
+      console.log(`[Telegram] Callback query answer failed (ignored): ${err.message}`);
+    });
   
   // معالجة القائمة الرئيسية
   if (data === "main_menu") {
@@ -36,14 +41,16 @@ export async function handleCallbackQuery(
 
   // معالجة "ابدأ الآن"
   if (data === "start_journey") {
-    await sendTelegramMessage(
-      chatId,
-      `🕌 <b>مرحباً بك في بوت ختمة الروضة الشاذلية!</b>\n\n` +
-        `للانضمام إلى الختمة، أرسل اسمك الكامل كما هو مسجل في قائمة المشاركين.\n\n` +
-        `<b>مثال:</b> أحمد محمد العلي\n\n` +
-        `💡 <b>تأكد من كتابة اسمك بالضبط كما هو في القائمة.</b>`,
-      { reply_markup: getBackToMenuKeyboard() }
-    );
+    // التحقق من ربط الحساب
+    const person = await db.getPersonByChatId(chatId);
+    
+    if (person) {
+      // إذا كان مربوط، عرض القائمة الرئيسية مباشرة
+      await sendMainMenu(chatId, firstName);
+    } else {
+      // إذا لم يكن مربوط، عرض أزرار اختيار الاسم
+      await sendNameSelectionButtons(chatId);
+    }
     return;
   }
 
@@ -102,7 +109,37 @@ export async function handleCallbackQuery(
     await sendTipsMessage(chatId);
     return;
   }
-
+  
+  // معالجة اختيار الاسم للربط
+  if (data.startsWith("link_name:")) {
+    const personId = parseInt(data.split(":")[1]);
+    const allPersons = await db.getAllPersons();
+    const person = allPersons.find(p => p.id === personId);
+    
+    if (person) {
+      await confirmLink(chatId, person.name);
+    } else {
+      await sendTelegramMessage(
+        chatId,
+        `❌ حدث خطأ في ربط الحساب. حاول مرة أخرى.`,
+        { reply_markup: getBackToMenuKeyboard() }
+      );
+    }
+    return;
+  }
+  
+  // معالجة التنقل بين صفحات الأسماء
+  if (data.startsWith("name_page:")) {
+    const page = parseInt(data.split(":")[1]);
+    await sendNameSelectionButtons(chatId, page);
+    return;
+  }
+  
+  // تجاهل الأزرار غير التفاعلية (مثل رقم الصفحة)
+  if (data === "ignore") {
+    return;
+  }
+  
   // معالجة تأكيد الربط
   if (data.startsWith("confirm_link:")) {
     const personName = data.replace("confirm_link:", "");
@@ -118,6 +155,19 @@ export async function handleCallbackQuery(
       { reply_markup: getBackToMenuKeyboard() }
     );
     return;
+  }
+  } catch (error: any) {
+    console.error(`[Telegram] Error in handleCallbackQuery:`, error);
+    // محاولة إرسال رسالة خطأ للمستخدم
+    try {
+      await sendTelegramMessage(
+        chatId,
+        `❌ حدث خطأ أثناء معالجة طلبك. حاول مرة أخرى أو أرسل /start`,
+        { reply_markup: getBackToMenuKeyboard() }
+      );
+    } catch (sendError) {
+      console.error(`[Telegram] Failed to send error message:`, sendError);
+    }
   }
 }
 
@@ -467,27 +517,132 @@ async function sendHelpMessage(chatId: string): Promise<void> {
 }
 
 /**
+ * إرسال أزرار اختيار الاسم (مع تقسيم إلى صفحات)
+ */
+async function sendNameSelectionButtons(chatId: string, page: number = 1): Promise<void> {
+  // الحصول على جميع المشتركين غير المربوطين
+  const allPersons = await db.getAllPersons();
+  const unlinkedPersons = allPersons.filter(p => !p.telegramChatId);
+  
+  if (unlinkedPersons.length === 0) {
+    await sendTelegramMessage(
+      chatId,
+      `✅ <b>جميع المشتركين مربوطين!</b>\n\n` +
+        `لا يوجد مشتركين جدد للربط.\n\n` +
+        `إذا كنت تعتقد أن هذا خطأ، تواصل مع المشرف.`,
+      { reply_markup: getBackToMenuKeyboard() }
+    );
+    return;
+  }
+  
+  // تقسيم الأسماء إلى صفحات (20 اسم لكل صفحة)
+  const pageSize = 20;
+  const totalPages = Math.ceil(unlinkedPersons.length / pageSize);
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, unlinkedPersons.length);
+  const currentPagePersons = unlinkedPersons.slice(startIndex, endIndex);
+  
+  // بناء الأزرار
+  const keyboard: any = {
+    inline_keyboard: []
+  };
+  
+  // إضافة زر لكل اسم (زرين في كل صف)
+  for (let i = 0; i < currentPagePersons.length; i += 2) {
+    const row = [];
+    row.push({
+      text: currentPagePersons[i].name,
+      callback_data: `link_name:${currentPagePersons[i].id}`
+    });
+    if (i + 1 < currentPagePersons.length) {
+      row.push({
+        text: currentPagePersons[i + 1].name,
+        callback_data: `link_name:${currentPagePersons[i + 1].id}`
+      });
+    }
+    keyboard.inline_keyboard.push(row);
+  }
+  
+  // إضافة أزرار التنقل بين الصفحات
+  if (totalPages > 1) {
+    const navigationRow = [];
+    if (page > 1) {
+      navigationRow.push({
+        text: '⬅️ السابق',
+        callback_data: `name_page:${page - 1}`
+      });
+    }
+    navigationRow.push({
+      text: `📖 ${page}/${totalPages}`,
+      callback_data: 'ignore'
+    });
+    if (page < totalPages) {
+      navigationRow.push({
+        text: 'التالي ➡️',
+        callback_data: `name_page:${page + 1}`
+      });
+    }
+    keyboard.inline_keyboard.push(navigationRow);
+  }
+  
+  // زر العودة
+  keyboard.inline_keyboard.push([{
+    text: '🏠 القائمة الرئيسية',
+    callback_data: 'main_menu'
+  }]);
+  
+  await sendTelegramMessage(
+    chatId,
+    `🕌 <b>مرحباً بك في بوت ختمة الروضة الشاذلية!</b>\n\n` +
+      `للانضمام إلى الختمة، اختر اسمك من القائمة أدناه:\n\n` +
+      `📌 عدد المشتركين غير المربوطين: ${unlinkedPersons.length}\n` +
+      `📖 الصفحة: ${page}/${totalPages}`,
+    { reply_markup: keyboard }
+  );
+}
+
+/**
  * تأكيد ربط الحساب
  */
 async function confirmLink(chatId: string, personName: string): Promise<void> {
-  const success = await db.linkTelegramAccount(personName, chatId);
+  const result = await db.linkTelegramAccount(personName, chatId);
   
-  if (success) {
+  if (result.success && result.person) {
+    // الحصول على الجمعة الحالية
+    const currentFriday = await db.getCurrentFriday();
+    
+    let message = `🎉 <b>تم ربط حسابك بنجاح!</b>\n\n` +
+      `مرحباً ${personName}!\n\n`;
+    
+    // إضافة معلومات الجزء المطلوب للجمعة الحالية
+    if (currentFriday) {
+      const currentReading = await db.getReadingForPersonAndFriday(result.person.name, currentFriday.fridayNumber);
+      
+      if (currentReading) {
+        message += `📌 <b>بياناتك:</b>\n` +
+          `• 👥 المجموعة: ${currentReading.groupNumber}\n` +
+          `• 📍 الموقع: ${currentReading.personPosition}\n\n` +
+          `📖 <b>جزؤك هذا الأسبوع:</b>\n` +
+          `• 📅 الجمعة: ${currentReading.fridayNumber} (${currentFriday.dateGregorian})\n` +
+          `• 📕 الجزء: ${currentReading.juzNumber}\n\n`;
+      }
+    }
+    
+    message += `🔔 <b>من الآن فصاعداً ستصلك:</b>\n` +
+      `• ✅ تأكيد عند تسجيل قراءتك\n` +
+      `• 🔔 تذكير أسبوعي بموعد القراءة\n` +
+      `• 📊 تحديثات عن تقدم الختمة\n\n` +
+      `بارك الله فيك ووفقك لما يحب ويرضى 🤲`;
+    
     await sendTelegramMessage(
       chatId,
-      `🎉 <b>تم ربط حسابك بنجاح!</b>\n\n` +
-        `مرحباً ${personName}!\n\n` +
-        `من الآن فصاعداً ستصلك:\n` +
-        `• ✅ تأكيد عند تسجيل قراءتك\n` +
-        `• 🔔 تذكير أسبوعي بموعد القراءة\n` +
-        `• 📊 تحديثات عن تقدم الختمة\n\n` +
-        `بارك الله فيك ووفقك لما يحب ويرضى 🤲`,
+      message,
       { reply_markup: getMainMenuKeyboard() }
     );
   } else {
     await sendTelegramMessage(
       chatId,
-      `❌ حدث خطأ أثناء ربط الحساب. حاول مرة أخرى.`,
+      `❌ ${result.message || 'حدث خطأ أثناء ربط الحساب'}\n\nحاول مرة أخرى.`,
       { reply_markup: getBackToMenuKeyboard() }
     );
   }
