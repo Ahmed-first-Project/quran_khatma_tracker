@@ -1364,3 +1364,52 @@ export async function getReadingForPersonAndFriday(personName: string, fridayNum
     return null;
   }
 }
+
+/**
+ * حساب ترتيب المشارك بين جميع المشتركين حسب عدد القراءات المكتملة
+ */
+export async function getOverallRanking(personName: string): Promise<{ rank: number; totalParticipants: number; completedReadings: number } | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  try {
+    // الحصول على جميع القراءات
+    const allReadings = await db.select().from(readings);
+
+    if (allReadings.length === 0) return null;
+
+    // حساب عدد القراءات المكتملة لكل مشارك
+    const participantStats: { [name: string]: number } = {};
+
+    for (const reading of allReadings) {
+      // الشخص الأول
+      if (!participantStats[reading.person1Name]) participantStats[reading.person1Name] = 0;
+      if (reading.person1Status) participantStats[reading.person1Name]++;
+
+      // الشخص الثاني
+      if (!participantStats[reading.person2Name]) participantStats[reading.person2Name] = 0;
+      if (reading.person2Status) participantStats[reading.person2Name]++;
+
+      // الشخص الثالث
+      if (!participantStats[reading.person3Name]) participantStats[reading.person3Name] = 0;
+      if (reading.person3Status) participantStats[reading.person3Name]++;
+    }
+
+    // ترتيب المشاركين حسب عدد القراءات (تنازلياً)
+    const sortedParticipants = Object.entries(participantStats).sort((a, b) => b[1] - a[1]);
+
+    // البحث عن ترتيب المشارك
+    const rankIndex = sortedParticipants.findIndex(([name]) => name === personName);
+    
+    if (rankIndex === -1) return null;
+
+    return {
+      rank: rankIndex + 1,
+      totalParticipants: sortedParticipants.length,
+      completedReadings: participantStats[personName] || 0,
+    };
+  } catch (error) {
+    console.error("[Database] Error getting overall ranking:", error);
+    return null;
+  }
+}

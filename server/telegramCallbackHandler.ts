@@ -296,6 +296,7 @@ async function handleMyStatus(chatId: string): Promise<void> {
   const pendingCount = await db.getPendingReadingsCount(person.name);
   const lastReading = await db.getLastCompletedReading(person.name);
   const groupRanking = await db.getGroupRanking(person.name);
+  const overallRanking = await db.getOverallRanking(person.name);
 
   // بناء رسالة الحالة
   let statusMessage = `📊 <b>حالة قراءاتك</b>\n\n`;
@@ -327,7 +328,13 @@ async function handleMyStatus(chatId: string): Promise<void> {
   // ترتيب المجموعة
   if (groupRanking) {
     const rankEmoji = groupRanking.rank === 1 ? '🥇' : groupRanking.rank === 2 ? '🥈' : groupRanking.rank === 3 ? '🥉' : '🏅';
-    statusMessage += `${rankEmoji} <b>ترتيبك في المجموعة:</b> ${groupRanking.rank} من ${groupRanking.totalMembers}\n\n`;
+    statusMessage += `${rankEmoji} <b>ترتيبك في المجموعة:</b> ${groupRanking.rank} من ${groupRanking.totalMembers}\n`;
+  }
+  
+  // الترتيب العام
+  if (overallRanking) {
+    const rankEmoji = overallRanking.rank === 1 ? '🏆' : overallRanking.rank <= 10 ? '⭐' : '💪';
+    statusMessage += `${rankEmoji} <b>ترتيبك العام:</b> ${overallRanking.rank} من ${overallRanking.totalParticipants}\n\n`;
   }
   
   // رسائل تحفيزية

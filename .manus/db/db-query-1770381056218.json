@@ -1,0 +1,9 @@
+{
+  "query": "-- تفعيل التنبيهات التلقائية\nINSERT INTO notificationSettings (settingKey, settingValue, description) \nVALUES \n  ('auto_reminders_enabled', 'true', 'تفعيل التنبيهات التلقائية (كل خميس الساعة 6 مساءً)'),\n  ('current_friday_number', '192', 'رقم الجمعة الحالية للتنبيهات التلقائية')\nON DUPLICATE KEY UPDATE \n  settingValue = VALUES(settingValue),\n  description = VALUES(description);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 28qxjEgmRbmQwg9.393f92783f96 --database UyiebKCxeJVcHdTLgU7BUJ --execute -- تفعيل التنبيهات التلقائية\nINSERT INTO notificationSettings (settingKey, settingValue, description) \nVALUES \n  ('auto_reminders_enabled', 'true', 'تفعيل التنبيهات التلقائية (كل خميس الساعة 6 مساءً)'),\n  ('current_friday_number', '192', 'رقم الجمعة الحالية للتنبيهات التلقائية')\nON DUPLICATE KEY UPDATE \n  settingValue = VALUES(settingValue),\n  description = VALUES(description);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1577
+}
