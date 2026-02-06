@@ -98,6 +98,65 @@ export default function Help() {
           </CardContent>
         </Card>
 
+        {/* الأزرار التفاعلية */}
+        <Card className="border-2 border-green-500/30 bg-gradient-to-br from-green-50 to-emerald-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-green-700">
+              <MessageCircle className="w-5 h-5" />
+              الأزرار التفاعلية في البوت
+            </CardTitle>
+            <CardDescription>
+              استخدم الأزرار التفاعلية لتجربة أسهل وأسرع
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <p className="text-gray-700 mb-4">
+                البوت يوفر أزراراً تفاعلية تظهر تلقائياً بعد كل رسالة، مما يسهل عليك التنقل واستخدام الميزات:
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-white border-2 border-green-200 rounded-lg">
+                  <div className="font-semibold text-green-700 mb-1">🕌 ابدأ الآن</div>
+                  <p className="text-xs text-gray-600">رسالة ترحيب ومعلومات البرنامج</p>
+                </div>
+                <div className="p-3 bg-white border-2 border-green-200 rounded-lg">
+                  <div className="font-semibold text-green-700 mb-1">🏠 القائمة الرئيسية</div>
+                  <p className="text-xs text-gray-600">عرض معلوماتك وجميع الأزرار</p>
+                </div>
+                <div className="p-3 bg-white border-2 border-green-200 rounded-lg">
+                  <div className="font-semibold text-green-700 mb-1">✅ سجّل قراءتك</div>
+                  <p className="text-xs text-gray-600">تسجيل سريع للقراءة الحالية</p>
+                </div>
+                <div className="p-3 bg-white border-2 border-green-200 rounded-lg">
+                  <div className="font-semibold text-green-700 mb-1">📊 إحصائياتي</div>
+                  <p className="text-xs text-gray-600">عرض حالة قراءاتك وترتيبك</p>
+                </div>
+                <div className="p-3 bg-white border-2 border-green-200 rounded-lg">
+                  <div className="font-semibold text-green-700 mb-1">📖 افتح المصحف</div>
+                  <p className="text-xs text-gray-600">رابط مباشر للمصحف الشريف</p>
+                </div>
+                <div className="p-3 bg-white border-2 border-green-200 rounded-lg">
+                  <div className="font-semibold text-green-700 mb-1">🤲 دعاء ختم القرآن</div>
+                  <p className="text-xs text-gray-600">دعاء الختم كاملاً</p>
+                </div>
+                <div className="p-3 bg-white border-2 border-green-200 rounded-lg">
+                  <div className="font-semibold text-green-700 mb-1">💬 نصائح القراءة</div>
+                  <p className="text-xs text-gray-600">نصائح لتحسين القراءة</p>
+                </div>
+                <div className="p-3 bg-white border-2 border-green-200 rounded-lg">
+                  <div className="font-semibold text-green-700 mb-1">❓ المساعدة</div>
+                  <p className="text-xs text-gray-600">شرح جميع الأوامر</p>
+                </div>
+              </div>
+              <div className="mt-4 p-3 bg-green-100 border border-green-300 rounded">
+                <p className="text-sm text-green-900">
+                  💡 <strong>نصيحة:</strong> استخدم الأزرار بدلاً من كتابة الأوامر لتجربة أسرع وأسهل!
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* أوامر البوت */}
         <Card className="border-2 border-[#D4AF37]/20">
           <CardHeader>
@@ -139,15 +198,15 @@ export default function Help() {
                 </div>
               </div>
 
-              <div className="p-4 border rounded-lg bg-gray-50">
+              <div className="p-4 border rounded-lg">
                 <div className="flex items-start gap-3">
-                  <code className="px-3 py-1 bg-gray-400 text-white rounded font-mono text-sm">
+                  <code className="px-3 py-1 bg-[#1F4E78] text-white rounded font-mono text-sm">
                     /حالتي
                   </code>
                   <div className="flex-1">
-                    <h3 className="font-semibold mb-1">عرض الحالة (قريباً)</h3>
+                    <h3 className="font-semibold mb-1">عرض الحالة</h3>
                     <p className="text-sm text-gray-600">
-                      سيعرض ملخصاً لحالة قراءاتك (المكتملة والمنتظرة). هذه الميزة ستكون متاحة قريباً.
+                      يعرض ملخصاً لحالة قراءاتك: عدد القراءات المكتملة، المنتظرة، آخر قراءة مسجلة، وترتيبك في مجموعتك.
                     </p>
                   </div>
                 </div>
@@ -241,6 +300,26 @@ export default function Help() {
                 <AccordionTrigger>غيّرت رقم هاتفي أو حساب Telegram، ماذا أفعل؟</AccordionTrigger>
                 <AccordionContent>
                   أرسل اسمك الكامل مرة أخرى من الحساب الجديد لتحديث الربط.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-8">
+                <AccordionTrigger>هل يجب كتابة الأوامر أم يمكنني استخدام الأزرار؟</AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-2">
+                    <p>يمكنك استخدام الأزرار التفاعلية بدلاً من كتابة الأوامر - وهذا أسهل وأسرع!</p>
+                    <p>الأزرار تظهر تلقائياً بعد كل رسالة من البوت.</p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-9">
+                <AccordionTrigger>كيف أعرف أي جزء يجب أن أقرأ هذا الأسبوع؟</AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-2">
+                    <p>اضغط على زر "🏠 القائمة الرئيسية" في البوت.</p>
+                    <p>سيعرض لك البوت معلوماتك: الجمعة الحالية، المجموعة، والجزء المخصص لك.</p>
+                  </div>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

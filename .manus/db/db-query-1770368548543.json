@@ -1,0 +1,45 @@
+{
+  "query": "SELECT * FROM fridays ORDER BY fridayNumber LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 28qxjEgmRbmQwg9.393f92783f96 --database UyiebKCxeJVcHdTLgU7BUJ --execute SELECT * FROM fridays ORDER BY fridayNumber LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "fridayNumber": "181",
+      "dateGregorian": "20-11-2025",
+      "dateHijri": "NULL",
+      "createdAt": "2026-02-02 20:57:52"
+    },
+    {
+      "id": "2",
+      "fridayNumber": "182",
+      "dateGregorian": "27-11-2025",
+      "dateHijri": "NULL",
+      "createdAt": "2026-02-02 20:57:52"
+    },
+    {
+      "id": "3",
+      "fridayNumber": "183",
+      "dateGregorian": "04-12-2025",
+      "dateHijri": "NULL",
+      "createdAt": "2026-02-02 20:57:52"
+    },
+    {
+      "id": "4",
+      "fridayNumber": "184",
+      "dateGregorian": "11-12-2025",
+      "dateHijri": "NULL",
+      "createdAt": "2026-02-02 20:57:52"
+    },
+    {
+      "id": "5",
+      "fridayNumber": "185",
+      "dateGregorian": "18-12-2025",
+      "dateHijri": "NULL",
+      "createdAt": "2026-02-02 20:57:52"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tfridayNumber\tdateGregorian\tdateHijri\tcreatedAt\n1\t181\t20-11-2025\tNULL\t2026-02-02 20:57:52\n2\t182\t27-11-2025\tNULL\t2026-02-02 20:57:52\n3\t183\t04-12-2025\tNULL\t2026-02-02 20:57:52\n4\t184\t11-12-2025\tNULL\t2026-02-02 20:57:52\n5\t185\t18-12-2025\tNULL\t2026-02-02 20:57:52\n",
+  "stderr": "",
+  "execution_time_ms": 4898
+}

@@ -1254,3 +1254,113 @@ export async function getNextPendingReadingForPerson(personName: string) {
     return null;
   }
 }
+
+/**
+ * الحصول على الجمعة الحالية حسب التاريخ
+ */
+export async function getCurrentFriday() {
+  const db = await getDb();
+  if (!db) return null;
+
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // تصفير الوقت للمقارنة بالتاريخ فقط
+    
+    // الحصول على جميع الجمعات
+    const allFridays = await db
+      .select()
+      .from(fridays)
+      .orderBy(asc(fridays.fridayNumber));
+    
+    let currentOrNextFriday = null;
+    
+    // البحث عن الجمعة الحالية أو القادمة
+    for (const friday of allFridays) {
+      const [day, month, year] = friday.dateGregorian.split('-');
+      const fridayDate = new Date(`${year}-${month}-${day}`);
+      fridayDate.setHours(0, 0, 0, 0);
+      
+      const diffDays = Math.floor((fridayDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      
+      // إذا كانت الجمعة في المستقبل أو اليوم أو خلال 3 أيام ماضية
+      if (diffDays >= -3) {
+        currentOrNextFriday = friday;
+        break; // نأخذ أول جمعة تحقق الشرط
+      }
+    }
+    
+    // إذا لم نجد جمعة، نرجع آخر جمعة
+    const result = currentOrNextFriday || allFridays[allFridays.length - 1] || null;
+    console.log(`[Database] getCurrentFriday: Today=${today.toISOString().split('T')[0]}, Result=${result ? `Friday ${result.fridayNumber} (${result.dateGregorian})` : 'null'}`);
+    return result;
+  } catch (error) {
+    console.error("[Database] Error getting current Friday:", error);
+    return null;
+  }
+}
+
+/**
+ * الحصول على القراءة المطلوبة لشخص معين في جمعة محددة
+ */
+export async function getReadingForPersonAndFriday(personName: string, fridayNumber: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  try {
+    const allReadings = await db
+      .select()
+      .from(readings)
+      .where(
+        and(
+          eq(readings.fridayNumber, fridayNumber),
+          or(
+            eq(readings.person1Name, personName),
+            eq(readings.person2Name, personName),
+            eq(readings.person3Name, personName)
+          )
+        )
+      );
+    
+    for (const reading of allReadings) {
+      if (reading.person1Name === personName) {
+        return {
+          id: reading.id,
+          fridayNumber: reading.fridayNumber,
+          juzNumber: reading.juzNumber,
+          groupNumber: reading.groupNumber,
+          personPosition: 1 as 1 | 2 | 3,
+          personName: reading.person1Name,
+          isCompleted: reading.person1Status,
+          completedDate: reading.person1Date
+        };
+      } else if (reading.person2Name === personName) {
+        return {
+          id: reading.id,
+          fridayNumber: reading.fridayNumber,
+          juzNumber: reading.juzNumber,
+          groupNumber: reading.groupNumber,
+          personPosition: 2 as 1 | 2 | 3,
+          personName: reading.person2Name,
+          isCompleted: reading.person2Status,
+          completedDate: reading.person2Date
+        };
+      } else if (reading.person3Name === personName) {
+        return {
+          id: reading.id,
+          fridayNumber: reading.fridayNumber,
+          juzNumber: reading.juzNumber,
+          groupNumber: reading.groupNumber,
+          personPosition: 3 as 1 | 2 | 3,
+          personName: reading.person3Name,
+          isCompleted: reading.person3Status,
+          completedDate: reading.person3Date
+        };
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error("[Database] Error getting reading for person and Friday:", error);
+    return null;
+  }
+}

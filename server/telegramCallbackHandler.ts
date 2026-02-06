@@ -4,7 +4,7 @@
  */
 
 import * as db from "./db";
-import { sendTelegramMessage } from "./telegram";
+import { sendTelegramMessage, answerCallbackQuery } from "./telegram";
 import {
   getStartKeyboard,
   getMainMenuKeyboard,
@@ -25,6 +25,9 @@ export async function handleCallbackQuery(
   data: string,
   firstName: string
 ): Promise<void> {
+  // الرد على callback query لإزالة علامة التحميل
+  await answerCallbackQuery(callbackQueryId);
+  
   // معالجة القائمة الرئيسية
   if (data === "main_menu") {
     await sendMainMenu(chatId, firstName);
@@ -132,10 +135,40 @@ async function sendMainMenu(chatId: string, firstName: string): Promise<void> {
       { reply_markup: getStartKeyboard() }
     );
   } else {
+    // الحصول على الجمعة الحالية حسب التاريخ
+    const currentFriday = await db.getCurrentFriday();
+    
+    let message = `🕌 <b>القائمة الرئيسية</b>\n\n`;
+    message += `مرحباً <b>${person.name}</b>!\n\n`;
+    
+    if (currentFriday) {
+      // الحصول على القراءة المطلوبة للجمعة الحالية
+      const currentReading = await db.getReadingForPersonAndFriday(person.name, currentFriday.fridayNumber);
+      
+      if (currentReading) {
+        message += `📅 <b>الجمعة:</b> ${currentReading.fridayNumber} (${currentFriday.dateGregorian})\n`;
+        message += `👥 <b>المجموعة:</b> ${currentReading.groupNumber}\n`;
+        message += `📖 <b>الجزء المخصص:</b> ${currentReading.juzNumber}\n`;
+        message += `📚 <b>الختمة:</b> ${currentReading.juzNumber <= 15 ? 'الأولى' : 'الثانية'}\n\n`;
+        
+        if (currentReading.isCompleted) {
+          message += `✅ <b>تم التسجيل!</b> بارك الله فيك 🌟`;
+        } else {
+          message += `⏳ <b>لم يتم التسجيل بعد</b>\n`;
+          message += `لتسجيل قراءتك، اضغط "سجّل قراءتك" 👇`;
+        }
+      } else {
+        message += `⚠️ لم يتم العثور على قراءة لهذه الجمعة.\n`;
+        message += `يرجى التواصل مع المشرف.`;
+      }
+    } else {
+      message += `⚠️ لم يتم العثور على بيانات الجمعة.\n`;
+      message += `يرجى التواصل مع المشرف.`;
+    }
+    
     await sendTelegramMessage(
       chatId,
-      `🕌 <b>القائمة الرئيسية</b>\n\n` +
-        `مرحباً ${person.name}! اختر ما تريد:`,
+      message,
       { reply_markup: getMainMenuKeyboard() }
     );
   }
@@ -157,15 +190,39 @@ async function handleMarkDone(chatId: string): Promise<void> {
     return;
   }
 
-  // البحث عن أول قراءة منتظرة
-  const pendingReading = await db.getNextPendingReadingForPerson(person.name);
+  // الحصول على الجمعة الحالية
+  const currentFriday = await db.getCurrentFriday();
   
-  if (!pendingReading) {
+  if (!currentFriday) {
     await sendTelegramMessage(
       chatId,
-      `✅ <b>ما شاء الله!</b>\n\n` +
-        `لا توجد قراءات منتظرة حالياً. جميع قراءاتك مكتملة! 🎉\n\n` +
-        `جزاك الله خيراً على التزامك 🤲`,
+      `⚠️ حدث خطأ في تحديد الجمعة الحالية.\n` +
+        `يرجى التواصل مع المشرف.`,
+      { reply_markup: getMainMenuKeyboard() }
+    );
+    return;
+  }
+  
+  // الحصول على القراءة المطلوبة للجمعة الحالية
+  const currentReading = await db.getReadingForPersonAndFriday(person.name, currentFriday.fridayNumber);
+  
+  if (!currentReading) {
+    await sendTelegramMessage(
+      chatId,
+      `⚠️ لم يتم العثور على قراءة لك في هذه الجمعة.\n` +
+        `يرجى التواصل مع المشرف.`,
+      { reply_markup: getMainMenuKeyboard() }
+    );
+    return;
+  }
+  
+  // التحقق من أن القراءة لم يتم تسجيلها بعد
+  if (currentReading.isCompleted) {
+    await sendTelegramMessage(
+      chatId,
+      `✅ <b>تم التسجيل مسبقاً!</b>\n\n` +
+        `لقد سجّلت قراءة الجزء ${currentReading.juzNumber} للجمعة ${currentReading.fridayNumber} من قبل.\n\n` +
+        `بارك الله فيك! 🌟`,
       { reply_markup: getMainMenuKeyboard() }
     );
     return;
@@ -173,8 +230,8 @@ async function handleMarkDone(chatId: string): Promise<void> {
 
   // تسجيل القراءة
   const success = await db.updateReadingStatus(
-    pendingReading.id,
-    pendingReading.personPosition,
+    currentReading.id,
+    currentReading.personPosition,
     true,
     new Date()
   );
@@ -199,7 +256,7 @@ async function handleMarkDone(chatId: string): Promise<void> {
     totalCompleted,
     isFirstInGroup: false,
     isFirstOverall: false,
-    weekNumber: pendingReading.fridayNumber
+    weekNumber: currentReading.fridayNumber
   };
 
   const motivationalMessage = getMotivationalMessage(context);
@@ -207,11 +264,12 @@ async function handleMarkDone(chatId: string): Promise<void> {
   await sendTelegramMessage(
     chatId,
     `✅ <b>تم تسجيل قراءتك بنجاح!</b>\n\n` +
-      `📅 الجمعة: ${pendingReading.fridayNumber}\n` +
-      `📖 الجزء: ${pendingReading.juzNumber}\n` +
-      `👤 الاسم: ${person.name}\n\n` +
+      `👤 <b>الاسم:</b> ${person.name}\n` +
+      `📅 <b>الجمعة:</b> ${currentReading.fridayNumber}\n` +
+      `👥 <b>المجموعة:</b> ${currentReading.groupNumber}\n` +
+      `📖 <b>الجزء:</b> ${currentReading.juzNumber}\n\n` +
       `${motivationalMessage}\n\n` +
-      `جزاك الله خيراً 🤲`,
+      `جزاك الله خيراً على المواظبة! 🌟`,
     { reply_markup: getMainMenuKeyboard() }
   );
 }

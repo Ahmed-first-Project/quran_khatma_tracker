@@ -1,0 +1,60 @@
+{
+  "query": "SELECT id, name, telegramChatId FROM persons LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 28qxjEgmRbmQwg9.393f92783f96 --database UyiebKCxeJVcHdTLgU7BUJ --execute SELECT id, name, telegramChatId FROM persons LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "محمود أبو تيم",
+      "telegramChatId": "NULL"
+    },
+    {
+      "id": "2",
+      "name": "احمد الجبسري",
+      "telegramChatId": "NULL"
+    },
+    {
+      "id": "3",
+      "name": "حسن الحمد",
+      "telegramChatId": "NULL"
+    },
+    {
+      "id": "4",
+      "name": "محمود يونسو",
+      "telegramChatId": "NULL"
+    },
+    {
+      "id": "5",
+      "name": "عمر الجبسري",
+      "telegramChatId": "NULL"
+    },
+    {
+      "id": "6",
+      "name": "محمد المقداد",
+      "telegramChatId": "NULL"
+    },
+    {
+      "id": "7",
+      "name": "ياسين فياض",
+      "telegramChatId": "NULL"
+    },
+    {
+      "id": "8",
+      "name": "سامي طقاطقة",
+      "telegramChatId": "NULL"
+    },
+    {
+      "id": "9",
+      "name": "احمد الباشا",
+      "telegramChatId": "NULL"
+    },
+    {
+      "id": "10",
+      "name": "عبد العزيز الخزار",
+      "telegramChatId": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\ttelegramChatId\n1\tمحمود أبو تيم\tNULL\n2\tاحمد الجبسري\tNULL\n3\tحسن الحمد\tNULL\n4\tمحمود يونسو\tNULL\n5\tعمر الجبسري\tNULL\n6\tمحمد المقداد\tNULL\n7\tياسين فياض\tNULL\n8\tسامي طقاطقة\tNULL\n9\tاحمد الباشا\tNULL\n10\tعبد العزيز الخزار\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1516
+}

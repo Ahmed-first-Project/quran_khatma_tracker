@@ -181,3 +181,30 @@ export async function sendWelcomeMessage(
 
   return await sendTelegramMessage(chatId, message);
 }
+
+/**
+ * الرد على callback query (إزالة علامة التحميل من الزر)
+ */
+export async function answerCallbackQuery(
+  callbackQueryId: string,
+  text?: string,
+  showAlert: boolean = false
+): Promise<boolean> {
+  if (!TELEGRAM_BOT_TOKEN) {
+    console.error("[Telegram] Bot token not configured");
+    return false;
+  }
+
+  try {
+    const response = await axios.post(`${TELEGRAM_API_URL}/answerCallbackQuery`, {
+      callback_query_id: callbackQueryId,
+      text: text,
+      show_alert: showAlert,
+    });
+
+    return response.data.ok;
+  } catch (error: any) {
+    console.error("[Telegram] Error answering callback query:", error.response?.data || error.message);
+    return false;
+  }
+}

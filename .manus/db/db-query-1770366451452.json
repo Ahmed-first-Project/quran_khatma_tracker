@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, name, telegramChatId, telegramUsername FROM persons WHERE name LIKE '%Ahmed%' OR telegramUsername LIKE '%ahmed%' LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 28qxjEgmRbmQwg9.393f92783f96 --database UyiebKCxeJVcHdTLgU7BUJ --execute SELECT id, name, telegramChatId, telegramUsername FROM persons WHERE name LIKE '%Ahmed%' OR telegramUsername LIKE '%ahmed%' LIMIT 10;",
+  "rows": [
+    {
+      "id": "30001",
+      "name": "احمد اللاذقاني",
+      "telegramChatId": "798642504",
+      "telegramUsername": "AhmedALLAZKANI"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\ttelegramChatId\ttelegramUsername\n30001\tاحمد اللاذقاني\t798642504\tAhmedALLAZKANI\n",
+  "stderr": "",
+  "execution_time_ms": 4134
+}

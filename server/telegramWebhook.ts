@@ -54,7 +54,8 @@ router.post("/api/telegram/webhook", async (req, res) => {
     if (update.callback_query) {
       const { handleCallbackQuery } = await import("./telegramCallbackHandler");
       const callbackQuery = update.callback_query;
-      const chatId = callbackQuery.message?.chat.id.toString() || callbackQuery.from.id.toString();
+      // استخدام from.id مباشرة لأنه دائماً موجود في callback queries
+      const chatId = callbackQuery.from.id.toString();
       const data = callbackQuery.data || "";
       const firstName = callbackQuery.from.first_name;
       

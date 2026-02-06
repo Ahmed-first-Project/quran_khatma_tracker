@@ -1,0 +1,50 @@
+{
+  "query": "SELECT fridayNumber, dateGregorian FROM fridays ORDER BY fridayNumber LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 28qxjEgmRbmQwg9.393f92783f96 --database UyiebKCxeJVcHdTLgU7BUJ --execute SELECT fridayNumber, dateGregorian FROM fridays ORDER BY fridayNumber LIMIT 10;",
+  "rows": [
+    {
+      "fridayNumber": "181",
+      "dateGregorian": "20-11-2025"
+    },
+    {
+      "fridayNumber": "182",
+      "dateGregorian": "27-11-2025"
+    },
+    {
+      "fridayNumber": "183",
+      "dateGregorian": "04-12-2025"
+    },
+    {
+      "fridayNumber": "184",
+      "dateGregorian": "11-12-2025"
+    },
+    {
+      "fridayNumber": "185",
+      "dateGregorian": "18-12-2025"
+    },
+    {
+      "fridayNumber": "186",
+      "dateGregorian": "25-12-2025"
+    },
+    {
+      "fridayNumber": "187",
+      "dateGregorian": "01-01-2026"
+    },
+    {
+      "fridayNumber": "188",
+      "dateGregorian": "08-01-2026"
+    },
+    {
+      "fridayNumber": "189",
+      "dateGregorian": "15-01-2026"
+    },
+    {
+      "fridayNumber": "190",
+      "dateGregorian": "22-01-2026"
+    }
+  ],
+  "messages": [],
+  "stdout": "fridayNumber\tdateGregorian\n181\t20-11-2025\n182\t27-11-2025\n183\t04-12-2025\n184\t11-12-2025\n185\t18-12-2025\n186\t25-12-2025\n187\t01-01-2026\n188\t08-01-2026\n189\t15-01-2026\n190\t22-01-2026\n",
+  "stderr": "",
+  "execution_time_ms": 1605
+}

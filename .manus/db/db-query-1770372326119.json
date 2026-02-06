@@ -1,0 +1,28 @@
+{
+  "query": "SELECT * FROM persons WHERE name LIKE '%احمد%اللاذقاني%' OR name LIKE '%أحمد%اللاذقاني%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 28qxjEgmRbmQwg9.393f92783f96 --database UyiebKCxeJVcHdTLgU7BUJ --execute SELECT * FROM persons WHERE name LIKE '%احمد%اللاذقاني%' OR name LIKE '%أحمد%اللاذقاني%';",
+  "rows": [
+    {
+      "id": "11",
+      "name": "احمد اللاذقاني",
+      "createdAt": "2026-02-03 12:06:23",
+      "telegramChatId": "NULL",
+      "telegramUsername": "NULL",
+      "isAdmin": "0",
+      "updatedAt": "2026-02-04 13:50:06"
+    },
+    {
+      "id": "30001",
+      "name": "احمد اللاذقاني",
+      "createdAt": "2026-02-03 22:00:15",
+      "telegramChatId": "798642504",
+      "telegramUsername": "AhmedALLAZKANI",
+      "isAdmin": "0",
+      "updatedAt": "2026-02-03 22:00:51"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tcreatedAt\ttelegramChatId\ttelegramUsername\tisAdmin\tupdatedAt\n11\tاحمد اللاذقاني\t2026-02-03 12:06:23\tNULL\tNULL\t0\t2026-02-04 13:50:06\n30001\tاحمد اللاذقاني\t2026-02-03 22:00:15\t798642504\tAhmedALLAZKANI\t0\t2026-02-03 22:00:51\n",
+  "stderr": "",
+  "execution_time_ms": 1660
+}

@@ -1,0 +1,9 @@
+{
+  "query": "SELECT * FROM fridays WHERE dateGregorian LIKE '%07-02-2026%' OR dateGregorian LIKE '%7-2-2026%' OR dateGregorian LIKE '%07-2-2026%' LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 28qxjEgmRbmQwg9.393f92783f96 --database UyiebKCxeJVcHdTLgU7BUJ --execute SELECT * FROM fridays WHERE dateGregorian LIKE '%07-02-2026%' OR dateGregorian LIKE '%7-2-2026%' OR dateGregorian LIKE '%07-2-2026%' LIMIT 5;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1537
+}
