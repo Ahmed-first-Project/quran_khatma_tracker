@@ -11,7 +11,7 @@ export async function sendTelegramMessage(
   text: string,
   options?: {
     reply_markup?: {
-      inline_keyboard?: Array<Array<{ text: string; url: string }>>;
+      inline_keyboard?: Array<Array<{ text: string; url?: string; callback_data?: string }>>;
     };
   }
 ): Promise<boolean> {

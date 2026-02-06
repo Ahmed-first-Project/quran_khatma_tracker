@@ -23,6 +23,24 @@ interface TelegramUpdate {
     date: number;
     text?: string;
   };
+  callback_query?: {
+    id: string;
+    from: {
+      id: number;
+      is_bot: boolean;
+      first_name: string;
+      last_name?: string;
+      username?: string;
+    };
+    message?: {
+      message_id: number;
+      chat: {
+        id: number;
+        type: string;
+      };
+    };
+    data?: string;
+  };
 }
 
 /**
@@ -31,6 +49,18 @@ interface TelegramUpdate {
 router.post("/api/telegram/webhook", async (req, res) => {
   try {
     const update: TelegramUpdate = req.body;
+
+    // معالجة callback queries (الأزرار التفاعلية)
+    if (update.callback_query) {
+      const { handleCallbackQuery } = await import("./telegramCallbackHandler");
+      const callbackQuery = update.callback_query;
+      const chatId = callbackQuery.message?.chat.id.toString() || callbackQuery.from.id.toString();
+      const data = callbackQuery.data || "";
+      const firstName = callbackQuery.from.first_name;
+      
+      await handleCallbackQuery(callbackQuery.id, chatId, data, firstName);
+      return res.sendStatus(200);
+    }
 
     if (!update.message || !update.message.text) {
       return res.sendStatus(200);
@@ -43,38 +73,36 @@ router.post("/api/telegram/webhook", async (req, res) => {
 
     // معالجة أمر /help
     if (text === "/help" || text === "/مساعدة") {
-      const helpMessage = `
-🔹 **قائمة الأوامر المتاحة:**
-
-📝 **إرسال اسمك الكامل** - ربط حسابك بالنظام
-مثال: \`أحمد محمد العلي\`
-
-✅ **/تم** - تسجيل قراءة الجزء المخصص لك
-
-    📊 **/حالتي** - عرض حالة قراءاتك الشاملة
-
-❓ **/help** - عرض هذه القائمة
-
-━━━━━━━━━━━━━━━━━━━━━
-
-💡 **للمشاركين الجدد:**
-1️⃣ أرسل اسمك الكامل (كما هو في القائمة)
-2️⃣ انتظر رسالة التأكيد
-3️⃣ بعد إتمام قراءة جزئك، أرسل \`/تم\`
-
-🌟 **نصيحة:** تأكد من كتابة اسمك بالضبط كما هو مسجل في النظام.
-      `;
-      await sendTelegramMessage(chatId, helpMessage);
+      const { getHelpKeyboard } = await import("./telegramKeyboards");
+      const helpMessage = `❓ <b>كيفية استخدام البوت</b>\n\n` +
+        `🕋 <b>للمشاركين الجدد:</b>\n` +
+        `1️⃣ اضغط "ابدأ الآن"\n` +
+        `2️⃣ أرسل اسمك الكامل (كما هو في القائمة)\n` +
+        `3️⃣ انتظر رسالة التأكيد\n\n` +
+        `✅ <b>لتسجيل قراءتك:</b>\n` +
+        `• اضغط زر "سجّل قراءتك" من القائمة\n` +
+        `• أو أرسل الأمر: /تم\n\n` +
+        `📊 <b>لمعرفة إحصائياتك:</b>\n` +
+        `• اضغط زر "إحصائياتي" من القائمة\n` +
+        `• أو أرسل الأمر: /حالتي\n\n` +
+        `💡 <b>نصيحة:</b> استخدم الأزرار التفاعلية لتجربة أسهل وأسرع!`;
+      await sendTelegramMessage(chatId, helpMessage, { reply_markup: getHelpKeyboard() });
       return res.sendStatus(200);
     }
 
     // معالجة أمر /start
     if (text === "/start") {
+      const { getStartKeyboard } = await import("./telegramKeyboards");
       await sendTelegramMessage(
         chatId,
-        `🌙 مرحباً بك في بوت ختمة الروضة الشاذلية!\n\n` +
-          `للربط بحسابك، أرسل اسمك الكامل كما هو مسجل في قائمة المشاركين.\n\n` +
-          `مثال: أحمد اللاذقاني`
+        `🕋 <b>مرحباً ${firstName}!</b>\n\n` +
+          `أهلاً بك في <b>بوت ختمة الروضة الشاذلية</b>\n\n` +
+          `🌟 برنامج قرآني مبارك لختم القرآن الكريم بشكل جماعي كل جمعة.\n\n` +
+          `📚 <b>الهدف:</b> ختم القرآن كاملاً كل أسبوع\n` +
+          `👥 <b>المشاركون:</b> 60 مجموعة (3 أشخاص لكل مجموعة)\n` +
+          `📝 <b>المهمة:</b> كل شخص يقرأ جزءاً واحداً في الأسبوع\n\n` +
+          `جعلنا الله وإياكم من أهل القرآن 🤲`,
+        { reply_markup: getStartKeyboard() }
       );
       return res.sendStatus(200);
     }
@@ -146,7 +174,8 @@ router.post("/api/telegram/webhook", async (req, res) => {
       
       statusMessage += `\nجزاك الله خيراً 🤲`;
       
-      await sendTelegramMessage(chatId, statusMessage);
+      const { getMainMenuKeyboard } = await import("./telegramKeyboards");
+      await sendTelegramMessage(chatId, statusMessage, { reply_markup: getMainMenuKeyboard() });
       return res.sendStatus(200);
     }
 
@@ -226,18 +255,20 @@ router.post("/api/telegram/webhook", async (req, res) => {
         // الحصول على الرسالة التحفيزية
         const motivationalMessage = getMotivationalMessage(motivationalContext);
         
+        const { getMainMenuKeyboard } = await import("./telegramKeyboards");
         const remainingCount = pendingReadings.length - 1;
         await sendTelegramMessage(
           chatId,
           `✅ <b>تم تسجيل قراءتك بنجاح!</b>\n\n` +
-            `👤 الاسم: ${person.name}\n` +
-            `📅 الجمعة: ${nextReading.fridayNumber}\n` +
-            `📖 الجزء: ${nextReading.juzNumber}\n` +
-            `📚 الختمة: ${nextReading.khatmaNumber}\n\n` +
+            `👤 <b>الاسم:</b> ${person.name}\n` +
+            `📅 <b>الجمعة:</b> ${nextReading.fridayNumber}\n` +
+            `📖 <b>الجزء:</b> ${nextReading.juzNumber}\n` +
+            `📚 <b>الختمة:</b> ${nextReading.khatmaNumber}\n\n` +
             `${motivationalMessage}\n\n` +
             (remainingCount > 0 
-              ? `📌 باقي لديك ${remainingCount} قراءة منتظرة. أرسل /تم مرة أخرى لتسجيل التالية.`
-              : `🎉 ممتاز! جميع قراءاتك مسجلة بنجاح!`)
+              ? `📋 باقي لديك <b>${remainingCount}</b> قراءة منتظرة.`
+              : `🎉 ممتاز! جميع قراءاتك مسجلة بنجاح!`),
+          { reply_markup: getMainMenuKeyboard() }
         );
       } else {
         await sendTelegramMessage(
@@ -254,24 +285,15 @@ router.post("/api/telegram/webhook", async (req, res) => {
     const result = await db.linkTelegramAccount(text, chatId, username);
 
     if (result.success) {
-      const appUrl = process.env.VITE_APP_URL || "https://3000-in77ue6pwa0mxr69upg56-f19f248a.sg1.manus.computer";
-      const myReadingsUrl = `${appUrl}/my-readings?name=${encodeURIComponent(result.person?.name || "")}`;
-      
+      const { getMainMenuKeyboard } = await import("./telegramKeyboards");
       await sendTelegramMessage(
         chatId,
-        `✅ تم ربط حسابك بنجاح!\n\n` +
-          `الاسم: ${result.person?.name}\n\n` +
-          `ستصلك الآن جميع التنبيهات والتذكيرات. بارك الله فيك! 🤲`,
-        {
-          reply_markup: {
-            inline_keyboard: [[
-              {
-                text: "📖 عرض قراءاتي",
-                url: myReadingsUrl
-              }
-            ]]
-          }
-        }
+        `✅ <b>تم ربط حسابك بنجاح!</b>\n\n` +
+          `👤 <b>الاسم:</b> ${result.person?.name}\n\n` +
+          `🔔 ستصلك الآن جميع التنبيهات والتذكيرات.\n\n` +
+          `📚 استخدم القائمة أدناه للتفاعل مع البوت:\n\n` +
+          `بارك الله فيك 🤲`,
+        { reply_markup: getMainMenuKeyboard() }
       );
     } else {
       // إذا فشل الربط، إرسال رسالة توضيحية

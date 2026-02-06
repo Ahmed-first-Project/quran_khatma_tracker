@@ -1196,3 +1196,61 @@ export async function getGroupRanking(personName: string): Promise<{ rank: numbe
     return null;
   }
 }
+
+/**
+ * الحصول على أول قراءة منتظرة لشخص معين
+ */
+export async function getNextPendingReadingForPerson(personName: string) {
+  const db = await getDb();
+  if (!db) return null;
+
+  try {
+    const allReadings = await db
+      .select()
+      .from(readings)
+      .where(
+        or(
+          eq(readings.person1Name, personName),
+          eq(readings.person2Name, personName),
+          eq(readings.person3Name, personName)
+        )
+      )
+      .orderBy(asc(readings.fridayNumber));
+
+    for (const reading of allReadings) {
+      if (reading.person1Name === personName && !reading.person1Status) {
+        return {
+          id: reading.id,
+          fridayNumber: reading.fridayNumber,
+          juzNumber: reading.juzNumber,
+          groupNumber: reading.groupNumber,
+          personPosition: 1 as 1 | 2 | 3,
+          personName: reading.person1Name
+        };
+      } else if (reading.person2Name === personName && !reading.person2Status) {
+        return {
+          id: reading.id,
+          fridayNumber: reading.fridayNumber,
+          juzNumber: reading.juzNumber,
+          groupNumber: reading.groupNumber,
+          personPosition: 2 as 1 | 2 | 3,
+          personName: reading.person2Name
+        };
+      } else if (reading.person3Name === personName && !reading.person3Status) {
+        return {
+          id: reading.id,
+          fridayNumber: reading.fridayNumber,
+          juzNumber: reading.juzNumber,
+          groupNumber: reading.groupNumber,
+          personPosition: 3 as 1 | 2 | 3,
+          personName: reading.person3Name
+        };
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error("[Database] Error getting next pending reading:", error);
+    return null;
+  }
+}
