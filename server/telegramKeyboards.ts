@@ -121,10 +121,12 @@ export function getAboutKeyboard(): InlineKeyboardMarkup {
 export function getQuranKeyboard(juzNumber?: number): InlineKeyboardMarkup {
   if (juzNumber) {
     // إذا كان لديه جزء محدد
+    // حساب رقم الصفحة: كل جزء = 20 صفحة
+    const pageNumber = (juzNumber - 1) * 20 + 1;
     return {
       inline_keyboard: [
         [
-          { text: `📖 افتح الجزء ${juzNumber}`, url: `https://quran.com/juz/${juzNumber}` }
+          { text: `📖 افتح الجزء ${juzNumber}`, url: `https://quran.ksu.edu.sa/index.php?l=ar&pg=${pageNumber}` }
         ],
         [
           { text: "🏠 القائمة الرئيسية", callback_data: "main_menu" }
@@ -136,7 +138,7 @@ export function getQuranKeyboard(juzNumber?: number): InlineKeyboardMarkup {
     return {
       inline_keyboard: [
         [
-          { text: "📖 افتح المصحف", url: "https://quran.com" }
+          { text: "📖 افتح المصحف", url: "https://quran.ksu.edu.sa/index.php?l=ar&pg=1" }
         ],
         [
           { text: "🏠 القائمة الرئيسية", callback_data: "main_menu" }
