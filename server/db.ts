@@ -1,4 +1,4 @@
-import { eq, and, or, like, sql, isNotNull, gte, lte, asc } from "drizzle-orm";
+import { eq, and, or, like, sql, isNotNull, gte, lte, asc, gt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, fridays, readings, persons, Person } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -1295,6 +1295,28 @@ export async function getCurrentFriday() {
     return result;
   } catch (error) {
     console.error("[Database] Error getting current Friday:", error);
+    return null;
+  }
+}
+
+/**
+ * الحصول على الجمعة القادمة بعد جمعة محددة
+ */
+export async function getNextFriday(currentFridayNumber: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  try {
+    const nextFriday = await db
+      .select()
+      .from(fridays)
+      .where(gt(fridays.fridayNumber, currentFridayNumber))
+      .orderBy(asc(fridays.fridayNumber))
+      .limit(1);
+    
+    return nextFriday[0] || null;
+  } catch (error) {
+    console.error("[Database] Error getting next Friday:", error);
     return null;
   }
 }

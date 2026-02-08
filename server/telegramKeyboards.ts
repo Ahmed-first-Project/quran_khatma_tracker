@@ -40,15 +40,12 @@ export function getMainMenuKeyboard(): InlineKeyboardMarkup {
         { text: "✅ سجّل قراءتك", callback_data: "mark_done" }
       ],
       [
-        { text: "📊 إحصائياتي", callback_data: "my_status" },
-        { text: "📖 افتح المصحف", callback_data: "open_quran" }
+        { text: "📖 افتح المصحف", callback_data: "open_quran" },
+        { text: "📊 إحصائياتي", callback_data: "my_status" }
       ],
       [
-        { text: "🤲 دعاء ختم القرآن", callback_data: "dua" },
-        { text: "💬 نصائح القراءة", callback_data: "tips" }
-      ],
-      [
-        { text: "❓ المساعدة", callback_data: "help" }
+        { text: "🔄 تحديث القائمة", callback_data: "main_menu" },
+        { text: "❓ مساعدة", callback_data: "help" }
       ]
     ]
   };

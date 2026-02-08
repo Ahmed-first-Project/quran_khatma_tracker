@@ -188,32 +188,78 @@ async function sendMainMenu(chatId: string, firstName: string): Promise<void> {
     // الحصول على الجمعة الحالية حسب التاريخ
     const currentFriday = await db.getCurrentFriday();
     
-    let message = `🕌 <b>القائمة الرئيسية</b>\n\n`;
-    message += `مرحباً <b>${person.name}</b>!\n\n`;
+    let message = `👋 <b>مرحباً ${person.name}</b>\n\n`;
+    message += `———————————\n\n`;
     
     if (currentFriday) {
       // الحصول على القراءة المطلوبة للجمعة الحالية
       const currentReading = await db.getReadingForPersonAndFriday(person.name, currentFriday.fridayNumber);
       
       if (currentReading) {
-        message += `📅 <b>الجمعة:</b> ${currentReading.fridayNumber} (${currentFriday.dateGregorian})\n`;
-        message += `👥 <b>المجموعة:</b> ${currentReading.groupNumber}\n`;
-        message += `📖 <b>الجزء المخصص:</b> ${currentReading.juzNumber}\n`;
-        message += `📚 <b>الختمة:</b> ${currentReading.juzNumber <= 15 ? 'الأولى' : 'الثانية'}\n\n`;
+        // تحديد إذا كانت الجمعة ماضية أم حالية
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const [day, month, year] = currentFriday.dateGregorian.split('-');
+        const fridayDate = new Date(`${year}-${month}-${day}`);
+        fridayDate.setHours(0, 0, 0, 0);
+        const isPastFriday = fridayDate.getTime() < today.getTime();
         
-        if (currentReading.isCompleted) {
-          message += `✅ <b>تم التسجيل!</b> بارك الله فيك 🌟`;
+        if (isPastFriday) {
+          // الجمعة ماضية
+          if (currentReading.isCompleted) {
+            // السيناريو 3: الجمعة الماضية + سجّل
+            message += `✅ <b>أكملت الجزء الماضي (${currentReading.juzNumber})</b>\n`;
+            message += `بارك الله فيك! 🌟\n\n`;
+          } else {
+            // السيناريو 4: الجمعة الماضية + لم يسجل
+            message += `⚠️ <b>لم تسجل الجزء الماضي (${currentReading.juzNumber})</b>\n`;
+            message += `الجمعة: ${currentFriday.dateGregorian}\n\n`;
+            message += `❌ فاتك الموعد\n\n`;
+          }
+          
+          // عرض الجزء القادم
+          const nextFriday = await db.getNextFriday(currentFriday.fridayNumber);
+          if (nextFriday) {
+            const nextReading = await db.getReadingForPersonAndFriday(person.name, nextFriday.fridayNumber);
+            if (nextReading) {
+              message += `———————————\n\n`;
+              message += `📅 <b>الجمعة القادمة:</b> ${nextFriday.dateGregorian}\n\n`;
+              message += `📖 <b>جزؤك القادم:</b>\n`;
+              message += `<b>الجزء رقم ${nextReading.juzNumber}</b>\n\n`;
+              if (!currentReading.isCompleted) {
+                message += `💪 لا تفوت هذه المرة!\n\n`;
+              } else {
+                message += `⏳ انتظر يوم الجمعة للتسجيل\n\n`;
+              }
+              message += `———————————\n\n`;
+              message += `👥 المجموعة: ${currentReading.groupNumber}`;
+            }
+          }
         } else {
-          message += `⏳ <b>لم يتم التسجيل بعد</b>\n`;
-          message += `لتسجيل قراءتك، اضغط "سجّل قراءتك" 👇`;
+          // الجمعة الحالية أو القادمة
+          message += `📖 <b>جزؤك هذا الأسبوع:</b>\n`;
+          message += `<b>الجزء رقم ${currentReading.juzNumber}</b>\n\n`;
+          
+          if (currentReading.isCompleted) {
+            // السيناريو 2: الجمعة الحالية + سجّل
+            message += `✅ <b>تم التسجيل!</b>\nبارك الله فيك 🌟\n\n`;
+          } else {
+            // السيناريو 1: الجمعة الحالية + لم يسجل
+            message += `⏳ <b>لم يتم التسجيل بعد</b>\n\n`;
+            message += `👇 <b>اضغط "سجّل قراءتك" أدناه</b>\n\n`;
+          }
+          
+          message += `———————————\n\n`;
+          message += `📅 الجمعة: ${currentFriday.dateGregorian}\n`;
+          message += `👥 المجموعة: ${currentReading.groupNumber}`;
         }
       } else {
-        message += `⚠️ لم يتم العثور على قراءة لهذه الجمعة.\n`;
-        message += `يرجى التواصل مع المشرف.`;
+        message += `⚠️ لا توجد قراءة لهذه الجمعة\n\n`;
+        message += `اتصل بالمشرف 📞`;
       }
     } else {
-      message += `⚠️ لم يتم العثور على بيانات الجمعة.\n`;
-      message += `يرجى التواصل مع المشرف.`;
+      message += `⚠️ لا توجد بيانات\n\n`;
+      message += `اتصل بالمشرف 📞`;
     }
     
     await sendTelegramMessage(
@@ -498,20 +544,22 @@ async function sendTipsMessage(chatId: string): Promise<void> {
 async function sendHelpMessage(chatId: string): Promise<void> {
   await sendTelegramMessage(
     chatId,
-    `❓ <b>كيفية استخدام البوت</b>\n\n` +
-      `🕌 <b>للمشاركين الجدد:</b>\n` +
+    `📚 <b>دليل الاستخدام المبسّط</b>\n\n` +
+      `———————————\n\n` +
+      `🆕 <b>للمشتركين الجدد:</b>\n\n` +
       `1️⃣ اضغط "ابدأ الآن"\n` +
-      `2️⃣ أرسل اسمك الكامل (كما هو في القائمة)\n` +
-      `3️⃣ انتظر رسالة التأكيد\n\n` +
-      `✅ <b>لتسجيل قراءتك:</b>\n` +
-      `• اضغط زر "سجّل قراءتك" من القائمة\n` +
-      `• أو أرسل الأمر: /تم\n\n` +
-      `📊 <b>لمعرفة إحصائياتك:</b>\n` +
-      `• اضغط زر "إحصائياتي" من القائمة\n` +
-      `• أو أرسل الأمر: /حالتي\n\n` +
-      `📖 <b>لفتح المصحف:</b>\n` +
-      `• اضغط زر "افتح المصحف" من القائمة\n\n` +
-      `💡 <b>نصيحة:</b> استخدم الأزرار التفاعلية لتجربة أسهل وأسرع!`,
+      `2️⃣ اختر اسمك من القائمة\n` +
+      `3️⃣ اضغط "نعم، هذا أنا"\n\n` +
+      `———————————\n\n` +
+      `✅ <b>لتسجيل القراءة:</b>\nاضغط "سجّل قراءتك" فقط!\n\n` +
+      `📖 <b>لفتح المصحف:</b>\nاضغط "افتح المصحف"\n\n` +
+      `📊 <b>لمعرفة إحصائياتك:</b>\nاضغط "إحصائياتي"\n\n` +
+      `———————————\n\n` +
+      `🔄 <b>إذا لم تعمل الأزرار:</b>\n` +
+      `اضغط "تحديث القائمة"\n` +
+      `أو أرسل: /start\n\n` +
+      `———————————\n\n` +
+      `💡 <b>كل شيء بالأزرار!</b>\nلا حاجة للكتابة 😊`,
     { reply_markup: getHelpKeyboard() }
   );
 }
