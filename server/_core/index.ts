@@ -10,6 +10,7 @@ import telegramWebhook from "../telegramWebhook";
 import { serveStatic, setupVite } from "./vite";
 import { startScheduler } from "../scheduler";
 import { startHealthMonitoring } from "../botHealthMonitor";
+import { startKeepAliveSystem } from "../keepAlive";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -70,6 +71,9 @@ async function startServer() {
     
     // تشغيل نظام مراقبة صحة البوت
     startHealthMonitoring();
+    
+    // تشغيل نظام keep-alive لمنع السبات
+    startKeepAliveSystem();
   });
 }
 
