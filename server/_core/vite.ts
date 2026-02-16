@@ -52,10 +52,17 @@ export function serveStatic(app: Express) {
     process.env.NODE_ENV === "development"
       ? path.resolve(import.meta.dirname, "../..", "dist", "public")
       : path.resolve(import.meta.dirname, "public");
+  
+  // في production على Railway، قد لا توجد ملفات frontend (البوت فقط)
   if (!fs.existsSync(distPath)) {
-    console.error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`
+    console.warn(
+      `Frontend build directory not found: ${distPath}. Running in bot-only mode.`
     );
+    // إرجاع رسالة بسيطة للصفحة الرئيسية
+    app.use("*", (_req, res) => {
+      res.status(200).send("Quran Khatma Tracker Bot is running. Use Telegram: @rawda_khatma_bot");
+    });
+    return;
   }
 
   app.use(express.static(distPath));
